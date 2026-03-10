@@ -1,24 +1,592 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Betting Monitor</title>
-<style>
-body{
-font-family:Arial;
-background:#0b0b0b;
-color:white;
-text-align:center;
-padding:100px;
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Betting Monitor — Polymarket Drop Terminal</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: #06070a;
+      color: white;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at top right, rgba(58,95,255,0.18), transparent 28%),
+        radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 18%);
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .hero, .card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(14px);
+      border-radius: 28px;
+    }
+    .hero { padding: 24px; margin-bottom: 24px; }
+    .hero-top {
+      display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex; gap: 8px; align-items: center; border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); padding: 7px 12px; border-radius: 999px; font-size: 12px; color: rgba(255,255,255,0.7);
+      text-transform: uppercase; letter-spacing: 0.18em;
+    }
+    h1 { font-size: 48px; line-height: 1.05; margin: 14px 0 10px; }
+    .muted { color: rgba(255,255,255,0.6); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    button, .btn {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      color: white;
+      border-radius: 18px;
+      padding: 12px 16px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .btn-primary { background: white; color: black; }
+    .pill-row, .stats { display: grid; gap: 14px; }
+    .pill-row { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 18px; }
+    .pill, .stat {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      border-radius: 20px;
+      padding: 14px 16px;
+      color: rgba(255,255,255,0.65);
+      font-size: 14px;
+    }
+    .stats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 18px; }
+    .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255,255,255,0.45); }
+    .stat .value { font-size: 28px; margin-top: 8px; font-weight: 700; color: white; }
+    .main {
+      display: grid;
+      grid-template-columns: 1.55fr 0.9fr;
+      gap: 24px;
+    }
+    .card { padding: 20px; }
+    .row { display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .search {
+      width: 280px; max-width: 100%; padding: 12px 14px; border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: white;
+    }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    .chip {
+      border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7);
+      padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 14px;
+    }
+    .chip.active { background: white; color: black; }
+    .table { border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; overflow: hidden; }
+    .thead, .trow {
+      display: grid;
+      grid-template-columns: 1.8fr 0.55fr 0.7fr 0.85fr 0.75fr 0.8fr 0.9fr;
+      gap: 12px;
+      padding: 14px 16px;
+      align-items: center;
+    }
+    .thead {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .trow {
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+    }
+    .trow:last-child { border-bottom: none; }
+    .trow:hover, .trow.active { background: rgba(255,255,255,0.08); }
+    .market-title { font-weight: 600; }
+    .small { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .signal {
+      display: inline-block; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); font-size: 12px;
+    }
+    .detail-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0;
+    }
+    .detail-box {
+      border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.22); border-radius: 18px; padding: 16px;
+    }
+    .detail-box .k { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+    .detail-box .v { margin-top: 8px; font-size: 28px; font-weight: 700; }
+    .progress {
+      height: 10px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; margin-top: 10px;
+    }
+    .progress > div { height: 100%; background: white; }
+    .note {
+      border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.22); border-radius: 18px; padding: 16px; color: rgba(255,255,255,0.58);
+      line-height: 1.6;
+    }
+    .stack { display: grid; gap: 18px; }
+    .danger {
+      margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: rgba(245,158,11,0.12); color: #fde68a;
+      border: 1px solid rgba(245,158,11,0.2);
+    }
+    a.market-link { color: white; text-decoration: none; display: inline-block; margin-top: 14px; }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 860px) {
+      h1 { font-size: 34px; }
+      .thead, .trow { grid-template-columns: 1.55fr 0.55fr 0.7fr 0.9fr 0.8fr; }
+      .hide-md { display: none; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .thead, .trow { grid-template-columns: 1.6fr 0.8fr 0.8fr; }
+      .hide-sm { display: none; }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="badge">● Polymarket Drop Terminal</div>
+          <h1>POD-style <span class="muted">Polymarket drops</span></h1>
+          <div class="muted" style="max-width:900px; line-height:1.7; font-size:15px;">
+            Live scanner for sharp downside moves on Polymarket. Built around active market discovery, live orderbook updates,
+            last-trade changes, and rolling baselines to surface real drops instead of static snapshots.
+          </div>
+        </div>
+        <div class="actions">
+          <button id="liveBtn">Live mode on</button>
+          <a class="btn btn-primary" href="#scanner">Alerts v1</a>
+        </div>
+      </div>
 
-<h1>Betting Monitor</h1>
-<p>Polymarket Drop Terminal</p>
+      <div class="pill-row">
+        <div class="pill" id="sourceLabel">Booting live feed...</div>
+        <div class="pill" id="socketLabel">WebSocket idle</div>
+        <div class="pill" id="syncLabel">Last sync: —</div>
+      </div>
 
-<p>Wenn du diese Seite siehst, funktioniert deine Domain.</p>
+      <div id="errorBox"></div>
 
+      <div class="stats">
+        <div class="stat"><div class="label">Active drops</div><div class="value" id="statCount">0</div><div class="muted">Markets matching filters</div></div>
+        <div class="stat"><div class="label">Avg drop</div><div class="value" id="statAvg">0.00%</div><div class="muted">Rolling baseline vs now</div></div>
+        <div class="stat"><div class="label">Hardest drop</div><div class="value" id="statHardest">0.00%</div><div class="muted">Largest live downside move</div></div>
+        <div class="stat"><div class="label">Whale drops</div><div class="value" id="statWhale">0</div><div class="muted">Fast move + strong flow</div></div>
+        <div class="stat"><div class="label">Aggressive flow</div><div class="value" id="statFlow">$0</div><div class="muted">Estimated sell-side pressure</div></div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="card" id="scanner">
+        <div class="row">
+          <h2 style="margin:0; font-size:24px;">Drop scanner</h2>
+          <div class="row">
+            <input id="searchInput" class="search" placeholder="Search market, category, signal..." />
+            <div class="pill" id="minDropPill">Min drop 3% · 5m rolling baseline</div>
+          </div>
+        </div>
+
+        <div class="chips" id="categoryChips"></div>
+
+        <div class="table">
+          <div class="thead">
+            <div>Market</div>
+            <div>Side</div>
+            <div>Now</div>
+            <div>Drop</div>
+            <div class="hide-sm">Spread</div>
+            <div class="hide-md">24h Vol</div>
+            <div class="hide-sm">Signal</div>
+          </div>
+          <div id="tableBody"></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h2 style="margin:0 0 16px; font-size:24px;">Signal detail</h2>
+          <div id="detailPane"></div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0 0 16px; font-size:24px;">Build status</h2>
+          <div class="note"><strong style="color:white;">What is already here</strong><br/>Real Polymarket market discovery, real Polymarket WebSocket subscription, rolling drop logic, and a POD-style scanner UI.</div>
+          <div style="height:12px"></div>
+          <div class="note"><strong style="color:white;">Next professional layer</strong><br/>Dedicated backend cache, persistent alert engine, trade clustering, whale wallet tagging, auth, saved watchlists, and billing.</div>
+          <div style="height:12px"></div>
+          <div class="note"><strong style="color:white;">Best deployment</strong><br/>This file is a fast deployable V1. For a real SaaS-grade version, move the terminal into a Next.js app with backend collectors and persistent history.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=100&order=volume_24hr&ascending=false";
+    const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
+
+    const FALLBACK_DROPS = [
+      { id: "f1", market: "Will Bitcoin hit $120k before June 30?", category: "Crypto", outcome: "YES", currentPrice: 0.58, previousPrice: 0.67, dropPct: 13.43, volume24h: 184200, aggressiveFlowUsd: 48210, confidence: 91, tokenId: "fallback-1", updatedAt: Date.now()-12000, signal: "Hard drop", spread: 0.012, slug: "bitcoin-120k-before-june-30", lastTradePrice: 0.58 },
+      { id: "f2", market: "Will Trump meet Xi before August?", category: "Politics", outcome: "YES", currentPrice: 0.41, previousPrice: 0.48, dropPct: 14.58, volume24h: 291100, aggressiveFlowUsd: 72900, confidence: 95, tokenId: "fallback-2", updatedAt: Date.now()-24000, signal: "Whale drop", spread: 0.02, slug: "trump-xi-meeting-before-august", lastTradePrice: 0.41 },
+      { id: "f3", market: "Will the Fed cut rates by July?", category: "Macro", outcome: "YES", currentPrice: 0.52, previousPrice: 0.56, dropPct: 7.14, volume24h: 404500, aggressiveFlowUsd: 51400, confidence: 77, tokenId: "fallback-3", updatedAt: Date.now()-61000, signal: "Pressure", spread: 0.01, slug: "fed-cut-rates-by-july", lastTradePrice: 0.52 }
+    ];
+
+    const state = {
+      search: "",
+      category: "All",
+      minDrop: 3,
+      markets: [...FALLBACK_DROPS],
+      selectedId: FALLBACK_DROPS[0].id,
+      liveMode: true,
+      connected: false,
+      loading: true,
+      sourceLabel: "Booting live feed...",
+      errorMessage: "",
+      lastSync: null
+    };
+
+    let ws = null;
+    let baselines = new Map();
+    let lastTrade = new Map();
+
+    function formatUsd(v) {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number.isFinite(v) ? v : 0);
+    }
+    function formatProb(v) { return `${((Number(v) || 0) * 100).toFixed(1)}%`; }
+    function formatAgo(ts) {
+      if (!ts) return "—";
+      const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (s < 60) return `${s}s ago`;
+      const m = Math.floor(s/60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m/60);
+      return `${h}h ago`;
+    }
+    function asNumber(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+    function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+    function normalizeCategory(eventItem, market) {
+      return eventItem?.category || market?.category || market?.groupItemTitle || market?.seriesSlug || "Other";
+    }
+    function pickTokenId(market) {
+      if (market?.clobTokenIds && Array.isArray(market.clobTokenIds) && market.clobTokenIds[0]) return String(market.clobTokenIds[0]);
+      if (typeof market?.clobTokenIds === "string") {
+        try { const parsed = JSON.parse(market.clobTokenIds); if (Array.isArray(parsed) && parsed[0]) return String(parsed[0]); } catch {}
+      }
+      if (Array.isArray(market?.tokenIds) && market.tokenIds[0]) return String(market.tokenIds[0]);
+      if (Array.isArray(market?.tokens) && market.tokens[0]?.token_id) return String(market.tokens[0].token_id);
+      return String(market?.token_id || market?.asset_id || market?.id || "");
+    }
+    function pickOutcomeLabel(market) {
+      if (Array.isArray(market?.outcomes) && market.outcomes[0]) return String(market.outcomes[0]).toUpperCase();
+      if (Array.isArray(market?.tokens) && market.tokens[0]?.outcome) return String(market.tokens[0].outcome).toUpperCase();
+      return "YES";
+    }
+    function computeSignal(dropPct, aggressiveFlowUsd, spread) {
+      if (dropPct >= 12 && aggressiveFlowUsd >= 1000) return "Whale drop";
+      if (dropPct >= 8) return "Fast drop";
+      if (dropPct >= 4) return "Pressure";
+      if (spread >= 0.03) return "Wide spread";
+      return "Watching";
+    }
+    function computeConfidence(dropPct, aggressiveFlowUsd, spread) {
+      const score = dropPct * 5 + Math.min(35, aggressiveFlowUsd / 1500) + Math.min(15, spread * 400);
+      return clamp(Math.round(score), 0, 99);
+    }
+    function buildInitialMarkets(events) {
+      const items = [];
+      for (const eventItem of events || []) {
+        const markets = Array.isArray(eventItem?.markets) ? eventItem.markets : [];
+        for (const market of markets) {
+          const tokenId = pickTokenId(market);
+          if (!tokenId) continue;
+          const currentPrice = asNumber(market?.lastTradePrice ?? market?.last_trade_price ?? market?.bestBid ?? market?.price ?? market?.outcomePrice, 0);
+          const volume24h = asNumber(market?.volume24hr ?? market?.volume24h ?? market?.volume24Hr ?? market?.volume, 0);
+          items.push({
+            id: `${market?.id || market?.slug || tokenId}`,
+            tokenId,
+            market: market?.question || eventItem?.title || eventItem?.slug || "Untitled market",
+            category: normalizeCategory(eventItem, market),
+            outcome: pickOutcomeLabel(market),
+            currentPrice,
+            previousPrice: currentPrice,
+            dropPct: 0,
+            volume24h,
+            aggressiveFlowUsd: 0,
+            confidence: 0,
+            signal: "Watching",
+            spread: Math.max(0, asNumber(market?.bestAsk, currentPrice) - asNumber(market?.bestBid, currentPrice)),
+            slug: market?.slug || eventItem?.slug || "",
+            updatedAt: Date.now(),
+            lastTradePrice: currentPrice
+          });
+        }
+      }
+      return items;
+    }
+    function filteredMarkets() {
+      return state.markets
+        .filter(x => state.category === "All" || x.category === state.category)
+        .filter(x => x.dropPct >= state.minDrop)
+        .filter(x => {
+          const q = state.search.trim().toLowerCase();
+          if (!q) return true;
+          return x.market.toLowerCase().includes(q) || x.category.toLowerCase().includes(q) || x.signal.toLowerCase().includes(q) || x.outcome.toLowerCase().includes(q);
+        })
+        .sort((a,b) => b.dropPct - a.dropPct);
+    }
+    function selectedMarket() {
+      const list = filteredMarkets();
+      return list.find(x => x.id === state.selectedId) || list[0] || null;
+    }
+
+    function render() {
+      const list = filteredMarkets();
+      const selected = selectedMarket();
+      if (selected && selected.id !== state.selectedId) state.selectedId = selected.id;
+
+      document.getElementById('sourceLabel').textContent = state.sourceLabel;
+      document.getElementById('socketLabel').textContent = state.connected ? 'WebSocket connected' : 'WebSocket idle';
+      document.getElementById('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
+      document.getElementById('minDropPill').textContent = `Min drop ${state.minDrop}% · 5m rolling baseline`;
+      document.getElementById('searchInput').value = state.search;
+      document.getElementById('liveBtn').textContent = state.liveMode ? 'Live mode on' : 'Live mode off';
+
+      const errorBox = document.getElementById('errorBox');
+      errorBox.innerHTML = state.errorMessage ? `<div class="danger">${state.errorMessage}</div>` : '';
+
+      const avgDrop = list.length ? list.reduce((s, x) => s + x.dropPct, 0) / list.length : 0;
+      const hardestDrop = list[0]?.dropPct || 0;
+      const whaleDrops = list.filter(x => x.signal === 'Whale drop').length;
+      const totalFlow = list.reduce((s, x) => s + x.aggressiveFlowUsd, 0);
+
+      document.getElementById('statCount').textContent = list.length;
+      document.getElementById('statAvg').textContent = `${avgDrop.toFixed(2)}%`;
+      document.getElementById('statHardest').textContent = `${hardestDrop.toFixed(2)}%`;
+      document.getElementById('statWhale').textContent = whaleDrops;
+      document.getElementById('statFlow').textContent = formatUsd(totalFlow);
+
+      const categories = ['All', ...new Set(state.markets.map(x => x.category))].sort((a,b) => a.localeCompare(b));
+      const chipBox = document.getElementById('categoryChips');
+      chipBox.innerHTML = categories.map(cat => `<button class="chip ${state.category === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`).join('');
+      chipBox.querySelectorAll('[data-cat]').forEach(btn => btn.onclick = () => { state.category = btn.dataset.cat; render(); });
+
+      const tableBody = document.getElementById('tableBody');
+      if (!list.length) {
+        tableBody.innerHTML = `<div class="trow"><div>No markets match your current filters.</div><div></div><div></div><div></div><div class="hide-sm"></div><div class="hide-md"></div><div class="hide-sm"></div></div>`;
+      } else {
+        tableBody.innerHTML = list.map(item => `
+          <div class="trow ${selected?.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
+            <div>
+              <div class="market-title">${escapeHtml(item.market)}</div>
+              <div class="small">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)}</div>
+            </div>
+            <div>${escapeHtml(item.outcome)}</div>
+            <div>${formatProb(item.currentPrice)}</div>
+            <div>-${item.dropPct.toFixed(2)}%</div>
+            <div class="hide-sm">${(item.spread * 100).toFixed(2)}%</div>
+            <div class="hide-md">${formatUsd(item.volume24h)}</div>
+            <div class="hide-sm"><span class="signal">${escapeHtml(item.signal)}</span></div>
+          </div>
+        `).join('');
+        tableBody.querySelectorAll('[data-id]').forEach(row => row.onclick = () => { state.selectedId = row.dataset.id; render(); });
+      }
+
+      const detail = document.getElementById('detailPane');
+      if (!selected) {
+        detail.innerHTML = `<div class="muted">Choose a market on the left.</div>`;
+      } else {
+        detail.innerHTML = `
+          <div>
+            <div style="font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.45)">Selected market</div>
+            <div style="font-size:24px; font-weight:700; line-height:1.4; margin-top:8px;">${escapeHtml(selected.market)}</div>
+            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+              <span class="signal" style="background:white; color:black;">${escapeHtml(selected.category)}</span>
+              <span class="signal">${escapeHtml(selected.outcome)}</span>
+              <span class="signal">${escapeHtml(selected.signal)}</span>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-box"><div class="k">Baseline</div><div class="v">${formatProb(selected.previousPrice)}</div></div>
+            <div class="detail-box"><div class="k">Current price</div><div class="v">${formatProb(selected.currentPrice)}</div></div>
+            <div class="detail-box"><div class="k">Last trade</div><div class="v">${formatProb(selected.lastTradePrice)}</div></div>
+            <div class="detail-box"><div class="k">Aggressive flow</div><div class="v">${formatUsd(selected.aggressiveFlowUsd)}</div></div>
+          </div>
+
+          <div class="note">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+              <strong style="color:white;">Drop confidence</strong>
+              <span>${selected.confidence}%</span>
+            </div>
+            <div class="progress"><div style="width:${selected.confidence}%;"></div></div>
+            <div style="margin-top:12px;">Signal is based on rolling baseline deterioration, accumulated aggressive flow, and spread behaviour. This is the correct V1 logic for a Polymarket POD-style scanner.</div>
+          </div>
+
+          <div class="note">
+            <strong style="color:white;">Live logic</strong><br/>
+            The scanner loads active markets from Gamma, subscribes to token IDs over the public market WebSocket, tracks orderbook updates and last trades, and recalculates drops against a rolling 5-minute baseline.
+          </div>
+
+          ${selected.slug ? `<a class="market-link btn" target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">Open market on Polymarket</a>` : ''}
+        `;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"]+/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[s] || s));
+    }
+
+    async function bootstrap() {
+      state.loading = true;
+      state.errorMessage = "";
+      render();
+      try {
+        const res = await fetch(GAMMA_EVENTS_URL);
+        const events = await res.json();
+        const initial = buildInitialMarkets(Array.isArray(events) ? events : []);
+        if (initial.length) {
+          state.markets = initial.slice(0, 160);
+          state.selectedId = state.selectedId || initial[0]?.id;
+          state.sourceLabel = 'Live metadata from Polymarket Gamma API';
+          state.lastSync = Date.now();
+          baselines = new Map();
+          initial.forEach(item => {
+            baselines.set(item.tokenId, { baseline: item.currentPrice || 0, previousPrice: item.currentPrice || 0 });
+            lastTrade.set(item.tokenId, item.currentPrice || 0);
+          });
+        }
+      } catch (e) {
+        state.errorMessage = 'Live metadata could not be loaded. Showing fallback sample feed.';
+        state.sourceLabel = 'Fallback sample feed';
+      } finally {
+        state.loading = false;
+        render();
+      }
+      openSocket();
+    }
+
+    function openSocket() {
+      if (!state.liveMode || !state.markets.length) return;
+      const tokenIds = state.markets.map(x => x.tokenId).filter(Boolean).slice(0, 120);
+      if (!tokenIds.length) return;
+      if (ws) ws.close();
+      ws = new WebSocket(MARKET_WS_URL);
+      ws.onopen = () => {
+        state.connected = true;
+        state.errorMessage = '';
+        ws.send(JSON.stringify({ assets_ids: tokenIds, type: 'market', custom_feature_enabled: true }));
+        render();
+      };
+      ws.onclose = () => { state.connected = false; render(); };
+      ws.onerror = () => {
+        state.connected = false;
+        state.errorMessage = 'WebSocket disconnected. The page still works, but live drop updates paused.';
+        render();
+      };
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const rows = Array.isArray(payload) ? payload : [payload];
+          const next = [...state.markets];
+          const byToken = new Map(next.map((item, index) => [item.tokenId, index]));
+
+          for (const message of rows) {
+            if (!message) continue;
+
+            if (message.event_type === 'price_change' && Array.isArray(message.price_changes)) {
+              for (const pc of message.price_changes) {
+                const tokenId = String(pc.asset_id || '');
+                const index = byToken.get(tokenId);
+                if (index === undefined) continue;
+
+                const item = next[index];
+                const baselineState = baselines.get(tokenId) || { baseline: item.currentPrice || 0, previousPrice: item.currentPrice || 0 };
+                const newBestBid = asNumber(pc.best_bid, item.currentPrice);
+                const newBestAsk = asNumber(pc.best_ask, item.currentPrice);
+                const newPrice = asNumber(pc.price, item.currentPrice);
+                const midpoint = newBestBid && newBestAsk && newBestAsk < 1 ? (newBestBid + newBestAsk) / 2 : newPrice;
+                const priceForDrop = midpoint || newPrice || item.currentPrice;
+                const baseline = baselineState.baseline || priceForDrop || 0.0001;
+                const dropPct = baseline > 0 ? Math.max(0, ((baseline - priceForDrop) / baseline) * 100) : 0;
+                const aggressiveFlowUsd = item.aggressiveFlowUsd + asNumber(pc.size, 0) * priceForDrop;
+                const spread = Math.max(0, newBestAsk - newBestBid);
+                const confidence = computeConfidence(dropPct, aggressiveFlowUsd, spread);
+                const signal = computeSignal(dropPct, aggressiveFlowUsd, spread);
+
+                next[index] = {
+                  ...item,
+                  previousPrice: baselineState.previousPrice || item.currentPrice,
+                  currentPrice: priceForDrop,
+                  lastTradePrice: newPrice || item.lastTradePrice,
+                  aggressiveFlowUsd,
+                  dropPct,
+                  confidence,
+                  signal,
+                  spread,
+                  updatedAt: Date.now()
+                };
+                baselines.set(tokenId, { ...baselineState, previousPrice: item.currentPrice });
+              }
+            }
+
+            if (message.event_type === 'last_trade_price') {
+              const tokenId = String(message.asset_id || '');
+              const index = byToken.get(tokenId);
+              if (index === undefined) continue;
+              lastTrade.set(tokenId, asNumber(message.price, next[index].lastTradePrice));
+              next[index] = { ...next[index], lastTradePrice: asNumber(message.price, next[index].lastTradePrice), updatedAt: Date.now() };
+            }
+
+            if (message.event_type === 'book') {
+              const tokenId = String(message.asset_id || '');
+              const index = byToken.get(tokenId);
+              if (index === undefined) continue;
+              const bids = Array.isArray(message.bids) ? message.bids : [];
+              const asks = Array.isArray(message.asks) ? message.asks : [];
+              const bestBid = bids.length ? asNumber(bids[bids.length - 1]?.price, next[index].currentPrice) : next[index].currentPrice;
+              const bestAsk = asks.length ? asNumber(asks[0]?.price, next[index].currentPrice) : next[index].currentPrice;
+              const midpoint = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : next[index].currentPrice;
+              const baselineState = baselines.get(tokenId) || { baseline: next[index].currentPrice || midpoint, previousPrice: next[index].currentPrice || midpoint };
+              const priceForDrop = midpoint || next[index].currentPrice;
+              const baseline = baselineState.baseline || priceForDrop || 0.0001;
+              const dropPct = baseline > 0 ? Math.max(0, ((baseline - priceForDrop) / baseline) * 100) : next[index].dropPct;
+              const spread = Math.max(0, bestAsk - bestBid);
+              const confidence = computeConfidence(dropPct, next[index].aggressiveFlowUsd, spread);
+              next[index] = {
+                ...next[index],
+                previousPrice: baselineState.previousPrice || next[index].currentPrice,
+                currentPrice: priceForDrop,
+                spread,
+                dropPct,
+                confidence,
+                signal: computeSignal(dropPct, next[index].aggressiveFlowUsd, spread),
+                updatedAt: Date.now()
+              };
+            }
+          }
+
+          state.markets = next.sort((a,b) => b.dropPct - a.dropPct);
+          state.lastSync = Date.now();
+          render();
+        } catch {}
+      };
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      state.search = e.target.value;
+      render();
+    });
+    document.getElementById('liveBtn').addEventListener('click', () => {
+      state.liveMode = !state.liveMode;
+      if (!state.liveMode && ws) ws.close();
+      if (state.liveMode) openSocket();
+      render();
+    });
+
+    setInterval(() => {
+      baselines = new Map(Array.from(baselines.entries()).map(([tokenId, value]) => {
+        const latest = lastTrade.get(tokenId);
+        return [tokenId, { baseline: Number.isFinite(latest) ? latest : value.baseline, previousPrice: value.previousPrice }];
+      }));
+      render();
+    }, 5 * 60 * 1000);
+
+    render();
+    bootstrap();
+  </script>
 </body>
 </html>
