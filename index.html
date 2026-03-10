@@ -739,7 +739,7 @@
           <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatOdds(selected.fairPrice)}</div><div class="tiny">${formatProb(selected.fairPrice)}</div></div>
           <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName)}</a></div></div>
         </div>
-        <div class="tiny" style="margin-top:10px;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'}</div>
+        <div class="tiny" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'} ${['Sports','Football','Basketball','Tennis','Baseball','Hockey','American Football','Soccer'].includes(selected.category) ? `· <a target="_blank" rel="noreferrer" href="https://www.oddsportal.com/search/results/${encodeURIComponent(selected.market)}/">open on OddsPortal</a>` : ''}</div>
       `;
 
       renderChart(selected);
