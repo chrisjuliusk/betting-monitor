@@ -345,6 +345,18 @@
             <input id="betStakeInput" class="input" placeholder="N/A" />
           </div>
           <div>
+            <div class="label">Live edge vs fair</div>
+            <input id="betEdgeInput" class="input" placeholder="Auto" readonly />
+          </div>
+          <div>
+            <div class="label">Current odds</div>
+            <input id="betOddsInput" class="input" placeholder="Auto" readonly />
+          </div>
+          <div>
+            <div class="label">Fair odds</div>
+            <input id="betFairOddsInput" class="input" placeholder="Auto" readonly />
+          </div>
+          <div>
             <div class="label">Tags</div>
             <input id="betTagsInput" class="input" placeholder="Select tags (optional)" />
           </div>
@@ -783,6 +795,9 @@
           <div class="tiny" style="margin-top:4px;">${escapeHtml(b.category)} · ${escapeHtml(b.outcome)} · logged ${formatAgo(b.loggedAt)}</div>
           <div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">
             <span class="badge">Stake: ${escapeHtml(b.stake || 'N/A')}</span>
+            <span class="badge">Entry: ${escapeHtml(b.entryOdds || '—')}</span>
+            <span class="badge">Fair: ${escapeHtml(b.fairOdds || '—')}</span>
+            <span class="badge ${Number(b.liveEdge || 0) >= 0 ? 'smart' : 'fast'}">Edge: ${escapeHtml(b.liveEdgeLabel || '—')}</span>
             ${b.tags ? `<span class="badge">${escapeHtml(b.tags)}</span>` : ''}
           </div>
           ${b.notes ? `<div class="tiny" style="margin-top:8px;">${escapeHtml(b.notes)}</div>` : ''}
@@ -1026,6 +1041,9 @@
       document.getElementById('betModalBackdrop').style.display = 'flex';
       document.getElementById('betModalSubtitle').textContent = `${selected.market} · ${selected.category} · ${selected.outcome}`;
       document.getElementById('betStakeInput').value = '';
+      document.getElementById('betEdgeInput').value = `${selected.fairEdge >= 0 ? '+' : ''}${selected.fairEdge.toFixed(2)}%`;
+      document.getElementById('betOddsInput').value = formatOdds(selected.currentPrice);
+      document.getElementById('betFairOddsInput').value = formatOdds(selected.fairPrice);
       document.getElementById('betTagsInput').value = '';
       document.getElementById('betNotesInput').value = '';
     }
@@ -1044,6 +1062,10 @@
         category: selected.category,
         outcome: selected.outcome,
         stake: document.getElementById('betStakeInput').value.trim(),
+        entryOdds: formatOdds(selected.currentPrice),
+        fairOdds: formatOdds(selected.fairPrice),
+        liveEdge: selected.fairEdge,
+        liveEdgeLabel: `${selected.fairEdge >= 0 ? '+' : ''}${selected.fairEdge.toFixed(2)}%`,
         tags: document.getElementById('betTagsInput').value.trim(),
         notes: document.getElementById('betNotesInput').value.trim(),
         loggedAt: Date.now()
