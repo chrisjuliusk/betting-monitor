@@ -96,6 +96,26 @@
     .muted { color: var(--muted); }
     .side-wrap { display: grid; gap: 10px; padding: 12px; }
     .side-card { border: 1px solid var(--line); background: rgba(255,255,255,0.035); border-radius: 8px; padding: 12px; }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(3,5,10,0.72); display: none; align-items: center; justify-content: center; z-index: 120;
+      backdrop-filter: blur(6px);
+    }
+    .modal {
+      width: min(540px, calc(100vw - 24px)); background: #0c1017; border: 1px solid var(--line-2); border-radius: 14px; padding: 16px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-grid { display: grid; gap: 10px; margin-top: 14px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .input, .textarea {
+      width: 100%; border: 1px solid var(--line); background: rgba(255,255,255,0.03); color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 13px;
+    }
+    .textarea { min-height: 84px; resize: vertical; }
+    .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+    .tracker-list { display: grid; gap: 8px; }
+    .tracker-item {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;
+    }
     .side-title { font-size: 11px; color: rgba(255,255,255,0.44); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px; }
     .detail-title { font-size: 18px; font-weight: 700; line-height: 1.4; }
     .detail-grid, .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -170,6 +190,7 @@
         <button class="tab" data-tab="smart">Smart Wallet</button>
         <button class="tab" data-tab="pressure">Pressure</button>
         <button class="tab" data-tab="history">History</button>
+        <button class="tab" data-tab="tracker">Bet Tracker</button>
       </div>
       <div class="filters">
         <input id="searchInput" class="field search" placeholder="Search market, category, wallet, signal..." />
@@ -238,7 +259,10 @@
           </div>
 
           <div class="side-card">
-            <div class="side-title">Price progression</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+              <div class="side-title" style="margin-bottom:0;">Price progression</div>
+              <button class="btn primary" id="chartLogBtn">＋ Log market</button>
+            </div>
             <div class="chart-box" id="chartBox"></div>
             <div class="legend" id="chartLegendControls">
               <span class="price toggle-line active" data-line="price">Price</span>
@@ -297,6 +321,11 @@
           </div>
 
           <div class="side-card">
+            <div class="side-title">Tracked bets</div>
+            <div id="trackedBetsList" class="tracker-list"></div>
+          </div>
+
+          <div class="side-card">
             <div class="side-title">Notes</div>
             <div class="tiny">
               This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. In this browser version, wallet analytics are heuristic and built from live market events plus synthetic profile labels. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.
@@ -305,13 +334,39 @@
         </div>
       </div>
     </div>
-  </div>
 
+    <div class="modal-backdrop" id="betModalBackdrop">
+      <div class="modal">
+        <div class="modal-title">Log market</div>
+        <div class="tiny" id="betModalSubtitle" style="margin-top:6px;"></div>
+        <div class="modal-grid">
+          <div>
+            <div class="label">Stake (€)</div>
+            <input id="betStakeInput" class="input" placeholder="N/A" />
+          </div>
+          <div>
+            <div class="label">Tags</div>
+            <input id="betTagsInput" class="input" placeholder="Select tags (optional)" />
+          </div>
+          <div>
+            <div class="label">Notes</div>
+            <textarea id="betNotesInput" class="textarea" placeholder="Add your note..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="betModalCancel">Cancel</button>
+          <button class="btn primary" id="betModalSave">Log market</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
     const GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=250&order=volume_24hr&ascending=false";
     const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
 
     const state = {
+      trackedBets: [],
+      activeModal: false,
       chartLines: { price: true, fair: true, open: true, limit: true },
       search: "",
       category: "all",
@@ -538,6 +593,10 @@
       if (state.tab === 'smart') list = list.filter(x => x.smartWalletScore >= 70 || x.signal === 'Smart edge');
       if (state.tab === 'pressure') list = list.filter(x => x.signal === 'Pressure' || x.signal === 'Fast move');
       if (state.tab === 'history') list = list.filter(x => (histories.get(x.tokenId) || []).length >= 8);
+      if (state.tab === 'tracker') {
+        const trackedIds = new Set(state.trackedBets.map(b => b.marketId));
+        list = list.filter(x => trackedIds.has(x.id));
+      }
 
       if (state.sort === 'drop') list.sort((a, b) => b.dropPct - a.dropPct);
       if (state.sort === 'recent') list.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -711,10 +770,30 @@
       document.getElementById('kpiWallet').textContent = selected.smartWalletScore;
     }
 
+    function renderTrackedBets() {
+      const box = document.getElementById('trackedBetsList');
+      if (!box) return;
+      if (!state.trackedBets.length) {
+        box.innerHTML = '<div class="tiny">No markets logged yet.</div>';
+        return;
+      }
+      box.innerHTML = state.trackedBets.slice().reverse().map(b => `
+        <div class="tracker-item">
+          <div style="font-weight:700; font-size:13px; line-height:1.4;">${escapeHtml(b.market)}</div>
+          <div class="tiny" style="margin-top:4px;">${escapeHtml(b.category)} · ${escapeHtml(b.outcome)} · logged ${formatAgo(b.loggedAt)}</div>
+          <div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="badge">Stake: ${escapeHtml(b.stake || 'N/A')}</span>
+            ${b.tags ? `<span class="badge">${escapeHtml(b.tags)}</span>` : ''}
+          </div>
+          ${b.notes ? `<div class="tiny" style="margin-top:8px;">${escapeHtml(b.notes)}</div>` : ''}
+        </div>`).join('');
+      }
+
     function render() {
       renderControls();
       renderRows();
       renderDetail();
+      renderTrackedBets();
     }
 
     function resetBaselineWindow() {
@@ -919,6 +998,12 @@
     document.getElementById('toggleControlsBtn').addEventListener('click', () => { state.controlsHidden = !state.controlsHidden; render(); });
     document.getElementById('muteBtn').addEventListener('click', () => { state.muted = !state.muted; render(); });
     document.getElementById('alertsBtn').addEventListener('click', () => alert('Alert configuration belongs in the backend build.'));
+    document.getElementById('chartLogBtn')?.addEventListener('click', () => openBetTrackerModal());
+    document.getElementById('betModalCancel')?.addEventListener('click', () => closeBetTrackerModal());
+    document.getElementById('betModalSave')?.addEventListener('click', () => saveTrackedBet());
+    document.getElementById('betModalBackdrop')?.addEventListener('click', (e) => {
+      if (e.target.id === 'betModalBackdrop') closeBetTrackerModal();
+    });
     document.getElementById('openBetTrackerBtn')?.addEventListener('click', () => openBetTrackerModal());
     document.getElementById('chartLegendControls')?.addEventListener('click', (e) => {
       const el = e.target.closest('.toggle-line');
@@ -937,21 +1022,35 @@
     function openBetTrackerModal() {
       const selected = getSelected();
       if (!selected) return;
-      const marketType = selected.category || 'Market';
-      const message = `${selected.market} [Pre-market]
+      state.activeModal = true;
+      document.getElementById('betModalBackdrop').style.display = 'flex';
+      document.getElementById('betModalSubtitle').textContent = `${selected.market} · ${selected.category} · ${selected.outcome}`;
+      document.getElementById('betStakeInput').value = '';
+      document.getElementById('betTagsInput').value = '';
+      document.getElementById('betNotesInput').value = '';
+    }
 
-${marketType}
+    function closeBetTrackerModal() {
+      state.activeModal = false;
+      document.getElementById('betModalBackdrop').style.display = 'none';
+    }
 
-${selected.outcome}
-
-€
-N/A
-
-Select tags (optional)`;
-      const result = prompt(`Log market
-
-${message}`, '');
-      if (result !== null) alert('Market added to your tracker.');
+    function saveTrackedBet() {
+      const selected = getSelected();
+      if (!selected) return;
+      state.trackedBets.push({
+        marketId: selected.id,
+        market: selected.market,
+        category: selected.category,
+        outcome: selected.outcome,
+        stake: document.getElementById('betStakeInput').value.trim(),
+        tags: document.getElementById('betTagsInput').value.trim(),
+        notes: document.getElementById('betNotesInput').value.trim(),
+        loggedAt: Date.now()
+      });
+      closeBetTrackerModal();
+      state.tab = 'tracker';
+      render();
     }
 
     bootstrap();
