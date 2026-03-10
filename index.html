@@ -328,7 +328,7 @@
           <div class="side-card">
             <div class="side-title">Notes</div>
             <div class="tiny">
-              This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. In this browser version, wallet analytics are heuristic and built from live market events plus synthetic profile labels. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.
+              This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. Wallet traces now try to resolve real trade activity from Polymarket public trade data and public profiles, then surface the actual wallet and profile where available. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.
             </div>
           </div>
         </div>
@@ -375,6 +375,8 @@
   <script>
     const GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=250&order=volume_24hr&ascending=false";
     const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
+    const TRADES_API_URL = "https://data-api.polymarket.com/trades";
+    const PUBLIC_PROFILE_URL = "https://gamma-api.polymarket.com/public-profile";
 
     const state = {
       trackedBets: [],
@@ -398,7 +400,8 @@
       markets: [],
       fallbackMarkets: [],
       selectedId: null,
-      walletRankings: []
+      walletRankings: [],
+      selectedTraceKey: null
     };
 
     let ws = null;
@@ -407,6 +410,8 @@
     const histories = new Map();
     const eventTapes = new Map();
     const walletMap = new Map();
+    const tradeFetchCache = new Map();
+    const profileFetchCache = new Map();
 
     function asNumber(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
     function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
@@ -433,9 +438,7 @@
       let h = 0; for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0; return h;
     }
     function walletLabel(wallet) {
-      const labels = ['Alpha', 'Falcon', 'North', 'Delta', 'Vector', 'Atlas', 'Signal', 'Sharp', 'Vertex', 'Nova'];
-      const idx = Math.abs(hashCode(wallet)) % labels.length;
-      return `${labels[idx]} ${shortWallet(wallet)}`;
+      return `Anon ${shortWallet(wallet)}`;
     }
 
     function createWallet(wallet) {
@@ -446,10 +449,88 @@
           activity: 0,
           score: clamp(35 + (Math.abs(hashCode(wallet)) % 55), 10, 98),
           pnlEdge: ((Math.abs(hashCode(wallet + 'pnl')) % 260) - 80) / 10,
-          lastSeen: Date.now()
+          lastSeen: Date.now(),
+          verified: false,
+          source: 'fallback'
         });
       }
       return walletMap.get(wallet);
+    }
+
+    function displayNameFromTrade(trade) {
+      if (trade?.name && String(trade.name).trim()) return String(trade.name).trim();
+      if (trade?.pseudonym && String(trade.pseudonym).trim()) return String(trade.pseudonym).trim();
+      return shortWallet(trade?.proxyWallet || '0x0000');
+    }
+
+    async function resolveWalletProfile(address) {
+      if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) return null;
+      if (profileFetchCache.has(address)) return profileFetchCache.get(address);
+      const request = fetch(`${PUBLIC_PROFILE_URL}?address=${encodeURIComponent(address)}`)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null);
+      profileFetchCache.set(address, request);
+      return request;
+    }
+
+    async function ensureRealTraceForMarket(market) {
+      if (!market) return;
+      const key = market.conditionId || (market.eventId ? `event-${market.eventId}` : null);
+      if (!key) return;
+      if (tradeFetchCache.has(key)) {
+        await tradeFetchCache.get(key);
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('limit', '50');
+      params.set('takerOnly', 'true');
+      if (market.conditionId) params.set('market', market.conditionId);
+      else if (market.eventId) params.set('eventId', String(market.eventId));
+      const request = fetch(`${TRADES_API_URL}?${params.toString()}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(async trades => {
+          if (!Array.isArray(trades) || !trades.length) return;
+          const cleaned = trades.map(tr => ({
+            time: asNumber(tr.timestamp, Date.now()),
+            fair: market.fairPrice,
+            price: asNumber(tr.price, market.currentPrice),
+            size: asNumber(tr.size, 0) * Math.max(1, asNumber(tr.price, market.currentPrice)),
+            wallet: tr.proxyWallet,
+            walletName: displayNameFromTrade(tr),
+            outcome: tr.outcome || market.outcome,
+            side: tr.side || ''
+          }));
+          eventTapes.set(market.tokenId, cleaned);
+          const totals = new Map();
+          for (const tr of cleaned) {
+            if (!tr.wallet) continue;
+            const w = createWallet(tr.wallet);
+            w.nickname = tr.walletName || w.nickname;
+            w.activity += 1;
+            w.lastSeen = tr.time;
+            w.source = 'trade';
+            totals.set(tr.wallet, (totals.get(tr.wallet) || 0) + tr.size);
+          }
+          const topWallet = Array.from(totals.entries()).sort((a,b) => b[1] - a[1])[0];
+          if (topWallet) {
+            market.primaryWallet = topWallet[0];
+            market.primaryWalletName = createWallet(topWallet[0]).nickname;
+          }
+          for (const wallet of totals.keys()) {
+            const profile = await resolveWalletProfile(wallet);
+            if (profile) {
+              const w = createWallet(wallet);
+              w.nickname = profile.name || profile.pseudonym || w.nickname;
+              w.verified = !!profile.verifiedBadge;
+              w.source = 'profile';
+            }
+          }
+          updateWalletRanking();
+          render();
+        })
+        .catch(() => null);
+      tradeFetchCache.set(key, request);
+      await request;
     }
 
     function updateWalletRanking() {
@@ -501,6 +582,8 @@
         walletActivity: 1,
         updatedAt: data.updatedAt || Date.now(),
         slug: data.slug || '',
+        eventId: data.eventId || null,
+        conditionId: data.conditionId || null,
         lastTradePrice: currentPrice,
         whaleCount: aggressiveFlowUsd >= 20000 ? 1 : 0,
         firstSeenAt: Date.now(),
@@ -737,6 +820,11 @@
         walletRows.innerHTML = '';
         return;
       }
+      const traceKey = selected.conditionId || (selected.eventId ? `event-${selected.eventId}` : selected.id);
+      if (state.selectedTraceKey !== traceKey) {
+        state.selectedTraceKey = traceKey;
+        ensureRealTraceForMarket(selected);
+      }
 
       detail.innerHTML = `
         <div class="detail-title">${escapeHtml(selected.market)}</div>
@@ -749,7 +837,7 @@
           <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatOdds(selected.openingPrice)}</div><div class="tiny">${formatProb(selected.openingPrice)}</div></div>
           <div class="detail-box"><div class="k">Current price</div><div class="v">${formatOdds(selected.currentPrice)}</div><div class="tiny">${formatProb(selected.currentPrice)}</div></div>
           <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatOdds(selected.fairPrice)}</div><div class="tiny">${formatProb(selected.fairPrice)}</div></div>
-          <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName)}</a></div></div>
+          <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName || shortWallet(selected.primaryWallet))}</a></div><div class="tiny">${escapeHtml(selected.primaryWallet || '')}</div></div>
         </div>
         <div class="tiny" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'} ${['Sports','Football','Basketball','Tennis','Baseball','Hockey','American Football','Soccer'].includes(selected.category) ? `· <a target="_blank" rel="noreferrer" href="https://www.oddsportal.com/search/results/${encodeURIComponent(selected.market)}/">open on OddsPortal</a>` : ''}</div>
       `;
@@ -839,6 +927,8 @@
               market: market?.question || eventItem?.title || 'Untitled market',
               category: eventItem?.category || market?.category || market?.groupItemTitle || market?.seriesSlug || 'Other',
               outcome: pickOutcomeLabel(market),
+              eventId: eventItem?.id || null,
+              conditionId: market?.conditionId || market?.condition_id || null,
               openingPrice,
               currentPrice,
               volume24h: asNumber(market?.volume24hr ?? market?.volume24h ?? market?.volume24Hr ?? market?.volume, 0),
