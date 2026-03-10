@@ -7,264 +7,288 @@
   <style>
     :root {
       --bg: #05070b;
-      --bg2: #0a0d14;
-      --panel: #0c1017;
-      --panel2: #111722;
-      --line: rgba(255,255,255,.08);
-      --text: #eef2ff;
-      --muted: rgba(238,242,255,.58);
-      --blue: #62a8ff;
-      --green: #31d17d;
-      --red: #ff6b7d;
-      --yellow: #f8c44f;
-      --cyan: #48dbff;
+      --bg-2: #090c12;
+      --panel: #0d1118;
+      --panel-2: #111723;
+      --line: rgba(255,255,255,0.08);
+      --line-2: rgba(94,162,255,0.18);
+      --text: #edf2ff;
+      --muted: rgba(237,242,255,0.56);
+      --green: #39d98a;
+      --red: #ff6f7f;
+      --blue: #62a9ff;
+      --yellow: #f6c65b;
+      --cyan: #5fe0ff;
+      --orange: #ff9a57;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, Arial, sans-serif; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Inter, Arial, sans-serif; }
     body {
+      min-height: 100vh;
       background-image:
-        radial-gradient(circle at top right, rgba(66,108,255,.16), transparent 28%),
-        radial-gradient(circle at top left, rgba(255,255,255,.05), transparent 20%);
+        radial-gradient(circle at top right, rgba(58,95,255,0.18), transparent 28%),
+        radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 18%);
     }
+    .app { min-height: 100vh; }
     .topbar {
-      position: sticky; top: 0; z-index: 40;
-      display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
-      padding: 10px 16px; background: rgba(6,8,12,.92); border-bottom: 1px solid var(--line); backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 10px 16px; border-bottom: 1px solid var(--line); background: rgba(5,7,11,0.9);
+      position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px);
     }
-    .brand { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-    .title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
-    .subtitle, .tiny { font-size: 12px; color: var(--muted); }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px rgba(49,209,125,.65); display: inline-block; margin-right: 8px; }
-    .actions, .tabs, .filters, .kpis { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn, .tab, .input, .select, .pill {
-      border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.04); color: var(--text);
-      padding: 8px 10px; font-size: 12px;
+    .left-top { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    .brand-title { font-size: 14px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+    .sub { font-size: 12px; color: var(--muted); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 8px; background: var(--green); box-shadow: 0 0 10px rgba(57,217,138,0.8); }
+    .right-top, .tabs, .filters, .metrics, .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn, .tab, .field, .pill {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--text); border-radius: 6px;
+      font-size: 12px; padding: 8px 10px;
     }
     .btn { cursor: pointer; }
-    .btn.primary { background: #17375f; border-color: rgba(98,168,255,.35); }
-    .btn.green { background: rgba(49,209,125,.12); color: #cffff2; border-color: rgba(49,209,125,.25); }
+    .btn.primary { background: #17365f; border-color: rgba(98,169,255,0.35); }
+    .btn.live { background: rgba(57,217,138,0.1); color: #d4ffea; border-color: rgba(57,217,138,0.28); }
+    .btn.warn { background: rgba(246,198,91,0.08); color: #ffeab8; border-color: rgba(246,198,91,0.18); }
     .tab { cursor: pointer; }
-    .tab.active { background: #182033; border-color: rgba(98,168,255,.4); }
-    .toolbar {
-      padding: 10px 16px; border-bottom: 1px solid var(--line); background: rgba(8,10,16,.95); position: sticky; top: 47px; z-index: 35;
+    .tab.active { background: #162338; border-color: var(--line-2); }
+    .field { background: rgba(0,0,0,0.25); }
+    .field.search { min-width: 220px; }
+    .controls {
+      padding: 10px 16px 8px; border-bottom: 1px solid var(--line); background: rgba(9,12,18,0.95);
+      position: sticky; top: 46px; z-index: 40; backdrop-filter: blur(12px);
     }
-    .filters { margin-top: 8px; }
-    .kpis { margin-top: 8px; }
+    .filters, .metrics { margin-top: 8px; }
     .pill { color: var(--muted); }
-    .layout { display: grid; grid-template-columns: 1.8fr .9fr; min-height: calc(100vh - 121px); }
-    .left { border-right: 1px solid var(--line); }
-    .feed-head, .feed-row {
-      display: grid; gap: 10px; align-items: center;
-      grid-template-columns: 2.2fr .7fr .85fr 1fr .85fr .8fr .8fr .85fr .85fr;
+    .notice {
+      margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: rgba(255,111,127,0.08);
+      color: #ffdce1; border: 1px solid rgba(255,111,127,0.18); font-size: 12px;
     }
-    .feed-head {
-      position: sticky; top: 121px; z-index: 30; padding: 10px 12px; background: #090c13; border-bottom: 1px solid var(--line);
-      color: rgba(255,255,255,.44); font-size: 11px; text-transform: uppercase; letter-spacing: .15em;
+    .layout {
+      display: grid; grid-template-columns: 1.9fr 1.05fr; min-height: calc(100vh - 110px);
     }
-    .feed-body { max-height: calc(100vh - 162px); overflow: auto; }
-    .feed-row {
-      padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; font-size: 12px;
-      background: rgba(10,13,19,.72);
+    .feed { border-right: 1px solid var(--line); }
+    .sidebar { background: rgba(255,255,255,0.02); }
+    .thead, .row {
+      display: grid;
+      grid-template-columns: 2.3fr 0.7fr 0.82fr 1.05fr 0.95fr 0.82fr 0.78fr 0.78fr 0.92fr;
+      gap: 10px; align-items: center;
     }
-    .feed-row:nth-child(2n) { background: rgba(14,20,30,.78); }
-    .feed-row:hover, .feed-row.active { background: rgba(29,44,76,.82); }
-    .mname { font-size: 13px; font-weight: 700; color: white; line-height: 1.35; }
-    .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.05); font-size: 11px; }
-    .badge.whale { color: #c4f8ff; background: rgba(72,219,255,.1); border-color: rgba(72,219,255,.22); }
-    .badge.fast { color: #ffd8dd; background: rgba(255,107,125,.1); border-color: rgba(255,107,125,.22); }
-    .badge.edge { color: #dfffe9; background: rgba(49,209,125,.1); border-color: rgba(49,209,125,.22); }
+    .thead {
+      position: sticky; top: 108px; z-index: 10; background: #080b10; border-bottom: 1px solid var(--line);
+      padding: 10px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255,255,255,0.44);
+    }
+    .rows { max-height: calc(100vh - 148px); overflow: auto; }
+    .row {
+      padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.06); cursor: pointer; font-size: 12px;
+    }
+    .row:nth-child(2n) { background: rgba(10,16,26,0.7); }
+    .row:hover, .row.active { background: rgba(26,42,74,0.78); }
+    .market-title { font-size: 13px; font-weight: 700; line-height: 1.35; }
+    .market-meta { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.05); }
+    .badge.whale { color: #bdf7ff; background: rgba(95,224,255,0.1); border-color: rgba(95,224,255,0.18); }
+    .badge.fast { color: #ffd8de; background: rgba(255,111,127,0.1); border-color: rgba(255,111,127,0.18); }
+    .badge.pressure { color: #ffecc2; background: rgba(246,198,91,0.1); border-color: rgba(246,198,91,0.18); }
+    .badge.smart { color: #d3deff; background: rgba(98,169,255,0.1); border-color: rgba(98,169,255,0.18); }
     .green { color: var(--green); }
     .red { color: var(--red); }
     .yellow { color: var(--yellow); }
-    .cyan { color: var(--cyan); }
+    .blue { color: var(--blue); }
     .muted { color: var(--muted); }
-    .right { display: grid; gap: 10px; padding: 10px; align-content: start; background: rgba(255,255,255,.02); }
-    .panel { border: 1px solid var(--line); background: rgba(255,255,255,.035); border-radius: 8px; padding: 12px; }
-    .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .15em; color: rgba(255,255,255,.46); margin-bottom: 10px; }
+    .side-wrap { display: grid; gap: 10px; padding: 12px; }
+    .side-card { border: 1px solid var(--line); background: rgba(255,255,255,0.035); border-radius: 8px; padding: 12px; }
+    .side-title { font-size: 11px; color: rgba(255,255,255,0.44); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px; }
     .detail-title { font-size: 18px; font-weight: 700; line-height: 1.4; }
-    .grid2, .grid4 { display: grid; gap: 8px; }
-    .grid2 { grid-template-columns: 1fr 1fr; }
-    .grid4 { grid-template-columns: repeat(4, 1fr); }
-    .mini-box { border: 1px solid var(--line); background: rgba(0,0,0,.18); border-radius: 8px; padding: 10px; }
-    .mini-box .k { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: rgba(255,255,255,.44); }
-    .mini-box .v { font-size: 20px; margin-top: 6px; font-weight: 700; }
-    .chart { height: 190px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, rgba(98,168,255,.08), rgba(255,255,255,.02)); }
-    .chart svg { width: 100%; height: 100%; display: block; }
-    .list { display: grid; gap: 6px; }
-    .list-item { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.05); padding: 7px 0; font-size: 12px; }
-    .list-item:last-child { border-bottom: none; }
-    .section-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-    .section-tab { cursor: pointer; border: 1px solid var(--line); background: rgba(255,255,255,.04); border-radius: 6px; padding: 6px 8px; font-size: 11px; }
-    .section-tab.active { background: #1a2236; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,.05); text-align: left; }
-    th { color: rgba(255,255,255,.42); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
-    .notice { padding: 10px 12px; border: 1px solid rgba(255,107,125,.18); background: rgba(255,107,125,.08); border-radius: 8px; color: #ffd8de; font-size: 12px; }
-    .hidden { display: none !important; }
-    @media (max-width: 1280px) {
+    .detail-grid, .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .detail-box, .kpi {
+      border: 1px solid var(--line); background: rgba(0,0,0,0.22); border-radius: 8px; padding: 10px;
+    }
+    .detail-box .k, .kpi .k { font-size: 10px; color: rgba(255,255,255,0.44); text-transform: uppercase; letter-spacing: 0.12em; }
+    .detail-box .v, .kpi .v { margin-top: 6px; font-size: 20px; font-weight: 700; }
+    .chart-box { height: 230px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(180deg, rgba(98,169,255,0.09), rgba(255,255,255,0.02)); overflow: hidden; position: relative; }
+    .chart-box svg { width: 100%; height: 100%; display: block; }
+    .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .legend span::before { content: ''; display: inline-block; width: 10px; height: 2px; margin-right: 6px; vertical-align: middle; }
+    .legend .price::before { background: var(--blue); }
+    .legend .fair::before { background: var(--yellow); }
+    .legend .open::before { background: var(--green); }
+    .table-mini { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .mini-head, .mini-row { display: grid; gap: 8px; align-items: center; padding: 8px 10px; font-size: 11px; }
+    .mini-head { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.44); text-transform: uppercase; letter-spacing: 0.12em; }
+    .mini-row { border-top: 1px solid rgba(255,255,255,0.06); }
+    .event-table .mini-head, .event-table .mini-row { grid-template-columns: 1.15fr 0.72fr 0.72fr 0.9fr 1.2fr; }
+    .wallet-table .mini-head, .wallet-table .mini-row { grid-template-columns: 1.25fr 0.8fr 0.8fr 0.8fr; }
+    .link-wallet { color: #c7deff; text-decoration: none; }
+    .tiny { font-size: 11px; color: var(--muted); line-height: 1.65; }
+    @media (max-width: 1400px) {
       .layout { grid-template-columns: 1fr; }
-      .left { border-right: none; }
-      .feed-head { top: 121px; }
-      .feed-body { max-height: none; }
+      .feed { border-right: none; }
+      .rows { max-height: none; }
     }
     @media (max-width: 980px) {
-      .feed-head, .feed-row { grid-template-columns: 2.1fr .75fr 1fr .85fr .8fr .8fr; }
+      .thead, .row { grid-template-columns: 2.2fr 0.8fr 1fr 1.05fr 0.9fr 0.9fr; }
       .hide-md { display: none; }
-      .grid4 { grid-template-columns: 1fr 1fr; }
+      .detail-grid, .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .event-table .mini-head, .event-table .mini-row { grid-template-columns: 1.2fr 0.8fr 0.8fr 1fr; }
+      .hide-evt-md { display: none; }
     }
     @media (max-width: 680px) {
-      .feed-head, .feed-row { grid-template-columns: 2fr .9fr 1fr; }
+      .thead, .row { grid-template-columns: 2.2fr 0.9fr 1fr 1.05fr; }
       .hide-sm { display: none; }
-      .grid2, .grid4 { grid-template-columns: 1fr; }
-      .input { width: 100%; }
+      .detail-grid, .kpi-grid { grid-template-columns: 1fr; }
+      .field.search { min-width: 100%; }
+      .wallet-table .mini-head, .wallet-table .mini-row { grid-template-columns: 1.2fr 0.8fr 0.9fr; }
+      .hide-wallet-sm { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <div>
-        <div class="title">Betting Monitor</div>
-        <div class="subtitle">institutional prediction market terminal</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="left-top">
+        <div>
+          <div class="brand-title">Betting Monitor</div>
+          <div class="sub">prediction markets terminal</div>
+        </div>
+        <div class="sub"><span class="dot"></span><span id="streamStatus">Polymarket realtime feed</span></div>
+        <div class="sub" id="eventCounter">0 events processed</div>
       </div>
-      <div class="subtitle"><span class="live-dot"></span><span id="liveStatus">Polymarket realtime feed</span></div>
-      <div class="subtitle" id="eventCount">0 events</div>
-    </div>
-    <div class="actions">
-      <button class="btn" id="toggleControls">Hide controls</button>
-      <button class="btn primary" id="alertsBtn">Configure alerts</button>
-      <button class="btn" id="muteBtn">Mute all</button>
-      <button class="btn green" id="liveBtn">Live</button>
-    </div>
-  </div>
-
-  <div class="toolbar" id="toolbar">
-    <div class="tabs">
-      <button class="tab active" data-tab="all">All Drops</button>
-      <button class="tab" data-tab="fast">Fast Moves</button>
-      <button class="tab" data-tab="whale">Whale Flow</button>
-      <button class="tab" data-tab="pressure">Pressure</button>
-      <button class="tab" data-tab="edge">Fair Edge</button>
-      <button class="tab" data-tab="wallets">Wallet Ranking</button>
-      <button class="tab" data-tab="tracker">Bet Tracker</button>
-      <button class="tab" data-tab="alerts">Alerts</button>
-    </div>
-    <div class="filters">
-      <input class="input" id="searchInput" placeholder="Search market, category, wallet signal..." />
-      <select class="select" id="categorySelect"></select>
-      <select class="select" id="sideSelect"><option value="all">All sides</option><option value="YES">YES</option><option value="NO">NO</option></select>
-      <select class="select" id="sortSelect">
-        <option value="drop">Sort: Biggest drop</option>
-        <option value="recent">Sort: Most recent</option>
-        <option value="flow">Sort: Aggressive flow</option>
-        <option value="edge">Sort: Fair edge</option>
-        <option value="wallet">Sort: Wallet score</option>
-      </select>
-      <select class="select" id="windowSelect"><option value="300000">Window: 5m</option><option value="900000">Window: 15m</option><option value="3600000">Window: 1h</option></select>
-      <select class="select" id="minDropSelect"><option value="1">Min drop 1%</option><option value="2">Min drop 2%</option><option value="3" selected>Min drop 3%</option><option value="5">Min drop 5%</option><option value="8">Min drop 8%</option></select>
-      <select class="select" id="minVolumeSelect"><option value="0">Any volume</option><option value="5000">Vol > $5k</option><option value="25000">Vol > $25k</option><option value="100000">Vol > $100k</option></select>
-      <select class="select" id="walletFilterSelect"><option value="0">Any wallet score</option><option value="40">Wallet > 40</option><option value="60">Wallet > 60</option><option value="80">Wallet > 80</option></select>
-    </div>
-    <div class="kpis">
-      <div class="pill" id="sourceLabel">Booting live feed...</div>
-      <div class="pill" id="syncLabel">Last sync: —</div>
-      <div class="pill" id="kpiStrip1">Tracked: 0 · Active Drops: 0</div>
-      <div class="pill" id="kpiStrip2">Whale Signals: 0 · Fair Edge+: 0</div>
-      <div class="pill" id="kpiStrip3">Aggressive Flow: $0</div>
-    </div>
-    <div id="errorArea"></div>
-  </div>
-
-  <div class="layout">
-    <div class="left">
-      <div class="feed-head" id="feedHead">
-        <div>Market</div>
-        <div>Outcome</div>
-        <div>Alert</div>
-        <div>Open → Current</div>
-        <div class="hide-sm">Fair</div>
-        <div class="hide-md">Drop</div>
-        <div class="hide-md">Edge</div>
-        <div class="hide-sm">Wallet</div>
-        <div class="hide-sm">Signal</div>
+      <div class="right-top">
+        <button class="btn" id="toggleControlsBtn">Hide controls</button>
+        <button class="btn warn" id="muteBtn">Mute all</button>
+        <button class="btn primary" id="alertsBtn">Configure alerts</button>
+        <button class="btn live" id="liveBtn">Live</button>
       </div>
-      <div class="feed-body" id="feedBody"></div>
     </div>
 
-    <div class="right">
-      <div class="panel">
-        <div class="section-tabs">
-          <div class="section-tab active" data-right="detail">Market</div>
-          <div class="section-tab" data-right="tracker">Tracker</div>
-          <div class="section-tab" data-right="wallets">Wallets</div>
-          <div class="section-tab" data-right="alerts">Alerts</div>
-        </div>
+    <div class="controls" id="controlsArea">
+      <div class="tabs">
+        <button class="tab active" data-tab="all">All Drops</button>
+        <button class="tab" data-tab="fast">Fast Moves</button>
+        <button class="tab" data-tab="whale">Whale Flow</button>
+        <button class="tab" data-tab="smart">Smart Wallet</button>
+        <button class="tab" data-tab="pressure">Pressure</button>
+        <button class="tab" data-tab="history">History</button>
+      </div>
+      <div class="filters">
+        <input id="searchInput" class="field search" placeholder="Search market, category, wallet, signal..." />
+        <select id="categorySelect" class="field"></select>
+        <select id="sideSelect" class="field">
+          <option value="all">All sides</option>
+          <option value="YES">YES</option>
+          <option value="NO">NO</option>
+        </select>
+        <select id="sortSelect" class="field">
+          <option value="drop">Sort: Biggest drop</option>
+          <option value="recent">Sort: Most recent</option>
+          <option value="flow">Sort: Flow</option>
+          <option value="wallet">Sort: Wallet score</option>
+          <option value="volume">Sort: Volume</option>
+        </select>
+        <select id="windowSelect" class="field">
+          <option value="300000">Window: 5m</option>
+          <option value="900000">Window: 15m</option>
+          <option value="3600000">Window: 1h</option>
+        </select>
+        <select id="minDropSelect" class="field">
+          <option value="1">Min drop 1%</option>
+          <option value="2">Min drop 2%</option>
+          <option value="3" selected>Min drop 3%</option>
+          <option value="5">Min drop 5%</option>
+          <option value="8">Min drop 8%</option>
+        </select>
+        <select id="volumeSelect" class="field">
+          <option value="0">Any volume</option>
+          <option value="5000">Vol > $5k</option>
+          <option value="25000">Vol > $25k</option>
+          <option value="100000">Vol > $100k</option>
+        </select>
+      </div>
+      <div class="metrics">
+        <div class="pill" id="sourceLabel">Booting live feed...</div>
+        <div class="pill" id="syncLabel">Last sync: —</div>
+        <div class="pill" id="dropStats">Drops: 0 · Whale: 0 · Smart: 0</div>
+        <div class="pill" id="marketStats">Markets: 0 · Fair edge+: 0</div>
+      </div>
+      <div id="errorArea"></div>
+    </div>
 
-        <div id="right-detail">
-          <div class="panel-title">Selected market</div>
-          <div id="detailPane"></div>
-          <div class="panel-title" style="margin-top:12px;">Price progression</div>
-          <div class="chart" id="chartPane"></div>
-          <div class="panel-title" style="margin-top:12px;">Recent changes</div>
-          <div class="list" id="recentPane"></div>
-          <div class="panel-title" style="margin-top:12px;">Market statistics</div>
-          <div class="grid4">
-            <div class="mini-box"><div class="k">Fair edge</div><div class="v" id="statFairEdge">0.0%</div></div>
-            <div class="mini-box"><div class="k">Spread</div><div class="v" id="statSpread">0.0%</div></div>
-            <div class="mini-box"><div class="k">Wallet score</div><div class="v" id="statWallet">0</div></div>
-            <div class="mini-box"><div class="k">Impact</div><div class="v" id="statImpact">Low</div></div>
-          </div>
+    <div class="layout">
+      <div class="feed">
+        <div class="thead">
+          <div>Market</div>
+          <div>Side</div>
+          <div>Alert</div>
+          <div>Price</div>
+          <div class="hide-sm">Fair</div>
+          <div class="hide-md">Drop</div>
+          <div class="hide-md">Flow</div>
+          <div class="hide-sm">Wallet</div>
+          <div class="hide-sm">Signal</div>
         </div>
+        <div class="rows" id="rows"></div>
+      </div>
 
-        <div id="right-tracker" class="hidden">
-          <div class="panel-title">Bet / Market Tracker</div>
-          <div class="grid2">
-            <div class="mini-box"><div class="k">Tracked markets</div><div class="v" id="trackerCount">0</div></div>
-            <div class="mini-box"><div class="k">Win rate</div><div class="v" id="trackerWinrate">0%</div></div>
-            <div class="mini-box"><div class="k">Avg entry edge</div><div class="v" id="trackerEdge">0.0%</div></div>
-            <div class="mini-box"><div class="k">Realized pnl proxy</div><div class="v" id="trackerPnl">0.0%</div></div>
+      <div class="sidebar">
+        <div class="side-wrap">
+          <div class="side-card">
+            <div class="side-title">Selected market</div>
+            <div id="detailPane"></div>
           </div>
-          <div style="margin-top:10px;" class="tiny">Click a market in the feed and add it to the tracker using the button below.</div>
-          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn primary" id="trackObservedBtn">Track as Observed</button>
-            <button class="btn" id="trackEnteredBtn">Track as Entered</button>
-          </div>
-          <div style="margin-top:12px; overflow:auto; max-height:320px;">
-            <table>
-              <thead><tr><th>Status</th><th>Market</th><th>Entry</th><th>Current</th><th>Edge</th></tr></thead>
-              <tbody id="trackerTable"></tbody>
-            </table>
-          </div>
-        </div>
 
-        <div id="right-wallets" class="hidden">
-          <div class="panel-title">Top wallets</div>
-          <div class="tiny">This ranking is a terminal-side intelligence layer using wallet-score heuristics, impact, timing and recurring activity. A backend version should replace this with persistent resolved-market rankings.</div>
-          <div style="margin-top:10px; overflow:auto; max-height:420px;">
-            <table>
-              <thead><tr><th>Wallet</th><th>Tier</th><th>Score</th><th>Impact</th></tr></thead>
-              <tbody id="walletTable"></tbody>
-            </table>
+          <div class="side-card">
+            <div class="side-title">Price progression</div>
+            <div class="chart-box" id="chartBox"></div>
+            <div class="legend">
+              <span class="price">Price</span>
+              <span class="fair">Fair</span>
+              <span class="open">Opening</span>
+            </div>
           </div>
-        </div>
 
-        <div id="right-alerts" class="hidden">
-          <div class="panel-title">Active alerts</div>
-          <div class="grid2">
-            <div class="mini-box"><div class="k">Configured</div><div class="v" id="alertCount">4</div></div>
-            <div class="mini-box"><div class="k">Triggered today</div><div class="v" id="alertTriggered">0</div></div>
+          <div class="side-card">
+            <div class="side-title">Market timeline</div>
+            <div class="table-mini event-table">
+              <div class="mini-head">
+                <div>Time</div>
+                <div>Fair</div>
+                <div>Price</div>
+                <div>Size</div>
+                <div class="hide-evt-md">Wallet</div>
+              </div>
+              <div id="eventRows"></div>
+            </div>
           </div>
-          <div style="margin-top:12px; overflow:auto; max-height:340px;">
-            <table>
-              <thead><tr><th>Type</th><th>Threshold</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>Drop alert</td><td>> 5%</td><td>On</td></tr>
-                <tr><td>Whale alert</td><td>> $15k</td><td>On</td></tr>
-                <tr><td>Fair edge</td><td>> 3%</td><td>On</td></tr>
-                <tr><td>Wallet signal</td><td>Tier A only</td><td>On</td></tr>
-              </tbody>
-            </table>
+
+          <div class="side-card">
+            <div class="side-title">Wallet ranking</div>
+            <div class="table-mini wallet-table">
+              <div class="mini-head">
+                <div>Wallet</div>
+                <div>Score</div>
+                <div>PnL edge</div>
+                <div class="hide-wallet-sm">Activity</div>
+              </div>
+              <div id="walletRows"></div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-title">Market intelligence</div>
+            <div class="kpi-grid">
+              <div class="kpi"><div class="k">Opening</div><div class="v" id="kpiOpening">0.0%</div></div>
+              <div class="kpi"><div class="k">Current</div><div class="v" id="kpiCurrent">0.0%</div></div>
+              <div class="kpi"><div class="k">Fair edge</div><div class="v" id="kpiEdge">0.0%</div></div>
+              <div class="kpi"><div class="k">Spread</div><div class="v" id="kpiSpread">0.0%</div></div>
+              <div class="kpi"><div class="k">Aggressive flow</div><div class="v" id="kpiFlow">$0</div></div>
+              <div class="kpi"><div class="k">Wallet score</div><div class="v" id="kpiWallet">0</div></div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-title">Notes</div>
+            <div class="tiny">
+              This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. In this browser version, wallet analytics are heuristic and built from live market events plus synthetic profile labels. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.
+            </div>
           </div>
         </div>
       </div>
@@ -272,338 +296,603 @@
   </div>
 
   <script>
-    const GAMMA_EVENTS_URL = 'https://gamma-api.polymarket.com/events?active=true&closed=false&limit=220&order=volume_24hr&ascending=false';
-    const MARKET_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
+    const GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=250&order=volume_24hr&ascending=false";
+    const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
 
     const state = {
-      tab: 'all', search: '', category: 'all', side: 'all', sort: 'drop', minDrop: 3, minVolume: 0, minWallet: 0,
-      baselineWindowMs: 300000, live: true, muted: false, controlsHidden: false,
-      markets: [], fallback: [], selectedId: null, events: 0, sourceLabel: 'Booting live feed...', lastSync: null, error: '',
-      rightTab: 'detail', tracker: []
+      search: "",
+      category: "all",
+      side: "all",
+      sort: "drop",
+      minDrop: 3,
+      minVolume: 0,
+      tab: "all",
+      baselineWindowMs: 300000,
+      liveMode: true,
+      muted: false,
+      controlsHidden: false,
+      error: "",
+      sourceLabel: "Booting live feed...",
+      lastSync: null,
+      totalEvents: 0,
+      markets: [],
+      fallbackMarkets: [],
+      selectedId: null,
+      walletRankings: []
     };
 
     let ws = null;
-    let histories = new Map();
-    let recents = new Map();
-    let tokenMap = new Map();
     let baselineTimer = null;
+    const marketByToken = new Map();
+    const histories = new Map();
+    const eventTapes = new Map();
+    const walletMap = new Map();
 
-    function n(v, f=0){ const x = Number(v); return Number.isFinite(x) ? x : f; }
-    function clamp(v,min,max){ return Math.min(Math.max(v,min),max); }
-    function usd(v){ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n(v)); }
-    function prob(v){ return `${(n(v)*100).toFixed(1)}%`; }
-    function ago(ts){ if(!ts) return '—'; const s=Math.floor((Date.now()-ts)/1000); if(s<60) return `${s}s ago`; const m=Math.floor(s/60); if(m<60) return `${m}m ago`; const h=Math.floor(m/60); return `${h}h ago`; }
-    function esc(s){ return String(s??'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
-
-    function makeWalletTag(score){
-      const id = Math.abs(Math.round(score * 781 + 77)).toString(16).slice(0,8).padStart(8,'0');
-      return `0x${id.slice(0,6)}...${id.slice(6,8)}`;
+    function asNumber(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+    function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+    function formatUsd(v) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(asNumber(v)); }
+    function formatProb(v) { return `${(asNumber(v) * 100).toFixed(1)}%`; }
+    function formatAgo(ts) { if (!ts) return '—'; const s = Math.floor((Date.now() - ts) / 1000); if (s < 60) return `${s}s ago`; const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); return `${h}h ago`; }
+    function formatTime(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+    }
+    function shortWallet(w) { return `${w.slice(0, 6)}...${w.slice(-4)}`; }
+    function escapeHtml(str) { return String(str ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+    function randomWallet(seed) {
+      const base = Math.abs(hashCode(seed)).toString(16).padEnd(12, '0');
+      return `0x${base}${base}`.slice(0, 18);
+    }
+    function hashCode(str) {
+      let h = 0; for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0; return h;
+    }
+    function walletLabel(wallet) {
+      const labels = ['Alpha', 'Falcon', 'North', 'Delta', 'Vector', 'Atlas', 'Signal', 'Sharp', 'Vertex', 'Nova'];
+      const idx = Math.abs(hashCode(wallet)) % labels.length;
+      return `${labels[idx]} ${shortWallet(wallet)}`;
     }
 
-    function derive(m){
-      m.dropPct = m.openingPrice > 0 ? Math.max(0, ((m.openingPrice - m.currentPrice) / m.openingPrice) * 100) : 0;
-      m.fairPrice = clamp(m.currentPrice + m.spread * 0.5 + Math.min(0.03, m.spread * .75), 0.01, 0.99);
-      m.fairEdge = (m.fairPrice - m.currentPrice) * 100;
-      m.walletScore = clamp(Math.round(m.dropPct * 4 + m.whaleTrades * 10 + m.aggressiveFlowUsd / 2500), 1, 99);
-      m.walletTier = m.walletScore >= 80 ? 'A' : m.walletScore >= 60 ? 'B' : 'C';
-      m.signal = m.whaleTrades >= 3 ? 'Whale Flow' : m.fairEdge >= 3 ? 'Fair Edge' : m.dropPct >= 8 ? 'Fast Move' : m.dropPct >= 4 ? 'Pressure' : 'Watching';
-      m.impact = m.whaleTrades >= 3 ? 'High' : m.dropPct >= 6 ? 'Medium' : 'Low';
-      return m;
+    function createWallet(wallet) {
+      if (!walletMap.has(wallet)) {
+        walletMap.set(wallet, {
+          wallet,
+          nickname: walletLabel(wallet),
+          activity: 0,
+          score: clamp(35 + (Math.abs(hashCode(wallet)) % 55), 10, 98),
+          pnlEdge: ((Math.abs(hashCode(wallet + 'pnl')) % 260) - 80) / 10,
+          lastSeen: Date.now()
+        });
+      }
+      return walletMap.get(wallet);
     }
 
-    function newMarket(seed){
-      const opening = n(seed.openingPrice, seed.currentPrice);
-      const current = n(seed.currentPrice, opening);
+    function updateWalletRanking() {
+      state.walletRankings = Array.from(walletMap.values())
+        .sort((a, b) => (b.score * 1.3 + b.activity * 0.5 + b.pnlEdge) - (a.score * 1.3 + a.activity * 0.5 + a.pnlEdge))
+        .slice(0, 12);
+    }
+
+    function pushHistory(tokenId, point) {
+      const arr = histories.get(tokenId) || [];
+      arr.push(point);
+      while (arr.length > 70) arr.shift();
+      histories.set(tokenId, arr);
+    }
+
+    function pushEvent(tokenId, row) {
+      const arr = eventTapes.get(tokenId) || [];
+      arr.unshift(row);
+      while (arr.length > 60) arr.pop();
+      eventTapes.set(tokenId, arr);
+    }
+
+    function createMarket(data) {
+      const openingPrice = asNumber(data.openingPrice, data.currentPrice);
+      const currentPrice = asNumber(data.currentPrice, openingPrice);
+      const spread = asNumber(data.spread, Math.max(0.004, Math.min(0.06, currentPrice * 0.035)));
+      const fairPrice = clamp(currentPrice + Math.min(0.02, spread * 0.55), 0.01, 0.99);
+      const aggressiveFlowUsd = asNumber(data.aggressiveFlowUsd, 0);
+      const wallet = data.primaryWallet || randomWallet(`${data.id}-${data.market}`);
+      const walletObj = createWallet(wallet);
       const market = {
-        id: seed.id, tokenId: seed.tokenId, market: seed.market, category: seed.category || 'Other', outcome: seed.outcome || 'YES',
-        openingPrice: opening, currentPrice: current, previousPrice: opening, fairPrice: current, fairEdge: 0,
-        dropPct: 0, spread: n(seed.spread, Math.max(0.006, current*0.03)), volume24h: n(seed.volume24h), aggressiveFlowUsd: n(seed.aggressiveFlowUsd), whaleTrades: n(seed.whaleTrades,0),
-        updatedAt: seed.updatedAt || Date.now(), slug: seed.slug || '', walletScore: n(seed.walletScore, 1), walletTier:'C', signal:'Watching', impact:'Low'
+        id: data.id,
+        tokenId: data.tokenId,
+        market: data.market,
+        category: data.category || 'Other',
+        outcome: data.outcome || 'YES',
+        openingPrice,
+        currentPrice,
+        previousPrice: openingPrice,
+        fairPrice,
+        fairEdge: (fairPrice - currentPrice) * 100,
+        spread,
+        volume24h: asNumber(data.volume24h, 0),
+        aggressiveFlowUsd,
+        smartWalletScore: clamp(walletObj.score + Math.round(aggressiveFlowUsd / 20000), 1, 99),
+        primaryWallet: wallet,
+        primaryWalletName: walletObj.nickname,
+        walletActivity: 1,
+        updatedAt: data.updatedAt || Date.now(),
+        slug: data.slug || '',
+        lastTradePrice: currentPrice,
+        whaleCount: aggressiveFlowUsd >= 20000 ? 1 : 0,
+        firstSeenAt: Date.now(),
+        signal: 'Watching',
+        impactLabel: 'Low'
       };
-      derive(market);
+      recomputeMarket(market);
       return market;
     }
 
-    function seedFallback(){
-      const now = Date.now();
-      const items = [
-        ['btc120','Will Bitcoin hit $120k before June 30?','Crypto','YES',0.67,0.58,184200,48210,'bitcoin-120k-before-june-30'],
+    function recomputeMarket(m) {
+      m.dropPct = m.openingPrice > 0 ? Math.max(0, ((m.openingPrice - m.currentPrice) / m.openingPrice) * 100) : 0;
+      m.fairPrice = clamp(m.currentPrice + Math.min(0.025, m.spread * 0.55), 0.01, 0.99);
+      m.fairEdge = (m.fairPrice - m.currentPrice) * 100;
+      const flowBoost = Math.min(25, m.aggressiveFlowUsd / 5000);
+      m.smartWalletScore = clamp(Math.round((createWallet(m.primaryWallet).score * 0.65) + flowBoost + m.whaleCount * 8 + m.dropPct * 1.7), 1, 99);
+      if (m.whaleCount >= 3 || m.smartWalletScore >= 85) m.signal = 'Whale flow';
+      else if (m.dropPct >= 8) m.signal = 'Fast move';
+      else if (m.dropPct >= 4) m.signal = 'Pressure';
+      else if (m.fairEdge >= 1.2) m.signal = 'Smart edge';
+      else m.signal = 'Watching';
+      m.impactLabel = m.whaleCount >= 3 || m.aggressiveFlowUsd > 80000 ? 'High' : m.dropPct >= 5 || m.aggressiveFlowUsd > 25000 ? 'Medium' : 'Low';
+      return m;
+    }
+
+    function seedFallback() {
+      const raw = [
+        ['btc120','Will Bitcoin hit $120k before June 30?','Crypto','YES',0.69,0.58,184200,48210,'bitcoin-120k-before-june-30'],
         ['trumpxi','Will Trump meet Xi before August?','Politics','YES',0.48,0.41,291100,72900,'trump-xi-meeting-before-august'],
         ['fedcut','Will the Fed cut rates by July?','Macro','YES',0.56,0.52,404500,51400,'fed-cut-rates-by-july'],
-        ['eth','Will Ethereum staking ETF be approved in 2026?','Crypto','NO',0.42,0.36,92200,19850,'eth-staking-etf-2026'],
+        ['eth2026','Will Ethereum staking ETF be approved in 2026?','Crypto','NO',0.42,0.36,92200,19850,'eth-staking-etf-2026'],
         ['openai','Will OpenAI launch GPT-6 before 2027?','Tech','YES',0.69,0.61,138800,23100,'openai-gpt6-before-2027'],
         ['lakers','Will the Lakers make the playoffs?','Sports','YES',0.47,0.44,561000,80300,'lakers-make-playoffs'],
         ['sol500','Will Solana hit $500 in 2026?','Crypto','YES',0.31,0.25,240500,42200,'solana-500-2026'],
+        ['nvidia','Will Nvidia exceed $2T revenue before 2030?','Tech','NO',0.54,0.49,89500,13300,'nvidia-2t-revenue-before-2030'],
         ['ukraine','Will there be a ceasefire in Ukraine this year?','Politics','YES',0.51,0.45,325800,60300,'ukraine-ceasefire-this-year'],
         ['gold','Will gold hit $3000 this year?','Macro','YES',0.62,0.57,118400,18750,'gold-3000-this-year'],
-        ['nvidia','Will Nvidia exceed $2T revenue before 2030?','Tech','NO',0.54,0.49,89500,13300,'nvidia-2t-revenue-before-2030']
+        ['sp500','Will the S&P 500 close above 6200 this quarter?','Macro','YES',0.58,0.51,147800,27400,'sp500-above-6200-quarter'],
+        ['election','Will Biden debate Trump again this year?','Politics','NO',0.41,0.34,168200,35600,'biden-trump-debate-again']
       ];
-      state.fallback = items.map((x,i)=> newMarket({ id:x[0], tokenId:`fb-${x[0]}`, market:x[1], category:x[2], outcome:x[3], openingPrice:x[4], currentPrice:x[5], volume24h:x[6], aggressiveFlowUsd:x[7], slug:x[8], whaleTrades: Math.round(x[7]/20000), updatedAt: now - i*14000 }));
-      state.selectedId = state.fallback[0].id;
-      state.fallback.forEach(m => { histories.set(m.tokenId, [{t:now-240000,p:m.openingPrice},{t:now-120000,p:(m.openingPrice+m.currentPrice)/2},{t:now,p:m.currentPrice}]); recents.set(m.tokenId, [{t:now,label:'Opening tracked',value:prob(m.openingPrice),cls:'blue'}]); tokenMap.set(m.tokenId,m); });
+      state.fallbackMarkets = raw.map((x, i) => {
+        const m = createMarket({
+          id: x[0], tokenId: `fallback-${x[0]}`, market: x[1], category: x[2], outcome: x[3],
+          openingPrice: x[4], currentPrice: x[5], volume24h: x[6], aggressiveFlowUsd: x[7], slug: x[8], updatedAt: Date.now() - i * 30000
+        });
+        marketByToken.set(m.tokenId, m);
+        const wallet = createWallet(m.primaryWallet);
+        wallet.activity += 1;
+        for (let t = 0; t < 28; t++) {
+          const price = clamp(m.openingPrice - ((m.openingPrice - m.currentPrice) * (t / 27)) + (Math.sin(t) * 0.004), 0.01, 0.99);
+          const fair = clamp(price + Math.min(0.02, m.spread * 0.5), 0.01, 0.99);
+          pushHistory(m.tokenId, { t: Date.now() - (28 - t) * 360000, price, fair });
+        }
+        for (let e = 0; e < 16; e++) {
+          const walletId = e % 3 === 0 ? m.primaryWallet : randomWallet(`${m.id}-${e}`);
+          const walletObj = createWallet(walletId);
+          walletObj.activity += 1;
+          pushEvent(m.tokenId, {
+            time: Date.now() - e * 720000,
+            fair: clamp(m.currentPrice + 0.01 + Math.random() * 0.02, 0.01, 0.99),
+            price: clamp(m.currentPrice + (Math.random() * 0.04 - 0.02), 0.01, 0.99),
+            size: Math.round(500 + Math.random() * 3500),
+            wallet: walletId,
+            walletName: walletObj.nickname
+          });
+        }
+        return m;
+      });
+      updateWalletRanking();
     }
 
-    function pickTokenId(m){
-      if (Array.isArray(m?.clobTokenIds) && m.clobTokenIds[0]) return String(m.clobTokenIds[0]);
-      if (typeof m?.clobTokenIds === 'string') { try { const p = JSON.parse(m.clobTokenIds); if (Array.isArray(p) && p[0]) return String(p[0]); } catch {} }
-      if (Array.isArray(m?.tokenIds) && m.tokenIds[0]) return String(m.tokenIds[0]);
-      if (Array.isArray(m?.tokens) && m.tokens[0]?.token_id) return String(m.tokens[0].token_id);
-      return String(m?.token_id || m?.asset_id || m?.id || '');
+    function pickTokenId(market) {
+      if (Array.isArray(market?.clobTokenIds) && market.clobTokenIds[0]) return String(market.clobTokenIds[0]);
+      if (typeof market?.clobTokenIds === 'string') {
+        try { const parsed = JSON.parse(market.clobTokenIds); if (Array.isArray(parsed) && parsed[0]) return String(parsed[0]); } catch {}
+      }
+      if (Array.isArray(market?.tokenIds) && market.tokenIds[0]) return String(market.tokenIds[0]);
+      if (Array.isArray(market?.tokens) && market.tokens[0]?.token_id) return String(market.tokens[0].token_id);
+      return String(market?.token_id || market?.asset_id || market?.id || '');
     }
-    function pickOutcomeLabel(m){ if (Array.isArray(m?.outcomes) && m.outcomes[0]) return String(m.outcomes[0]).toUpperCase(); if (Array.isArray(m?.tokens) && m.tokens[0]?.outcome) return String(m.tokens[0].outcome).toUpperCase(); return 'YES'; }
 
-    function markets(){ return state.markets.length ? state.markets : state.fallback; }
-    function selected(){ const list = filtered(); return list.find(x=>x.id===state.selectedId) || list[0] || null; }
+    function pickOutcomeLabel(market) {
+      if (Array.isArray(market?.outcomes) && market.outcomes[0]) return String(market.outcomes[0]).toUpperCase();
+      if (Array.isArray(market?.tokens) && market.tokens[0]?.outcome) return String(market.tokens[0].outcome).toUpperCase();
+      return 'YES';
+    }
 
-    function filtered(){
-      let list = [...markets()];
+    function getMarkets() { return state.markets.length ? state.markets : state.fallbackMarkets; }
+
+    function filteredMarkets() {
+      let list = [...getMarkets()];
       if (state.category !== 'all') list = list.filter(x => x.category === state.category);
       if (state.side !== 'all') list = list.filter(x => x.outcome === state.side);
-      if (state.search.trim()) { const q = state.search.trim().toLowerCase(); list = list.filter(x => x.market.toLowerCase().includes(q) || x.category.toLowerCase().includes(q) || x.signal.toLowerCase().includes(q)); }
-      list = list.filter(x => x.dropPct >= state.minDrop && x.volume24h >= state.minVolume && x.walletScore >= state.minWallet);
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter(x => x.market.toLowerCase().includes(q) || x.category.toLowerCase().includes(q) || x.primaryWalletName.toLowerCase().includes(q) || x.signal.toLowerCase().includes(q));
+      }
+      list = list.filter(x => x.dropPct >= state.minDrop && x.volume24h >= state.minVolume);
       if (state.tab === 'fast') list = list.filter(x => x.dropPct >= 5);
-      if (state.tab === 'whale') list = list.filter(x => x.whaleTrades >= 2 || x.walletScore >= 70);
-      if (state.tab === 'pressure') list = list.filter(x => x.signal === 'Pressure' || x.signal === 'Fast Move');
-      if (state.tab === 'edge') list = list.filter(x => x.fairEdge > 0);
-      if (state.tab === 'wallets') list = list.filter(x => x.walletScore >= 55);
-      if (state.tab === 'tracker') list = list.filter(x => state.tracker.some(t => t.id === x.id));
-      if (state.sort === 'drop') list.sort((a,b) => b.dropPct - a.dropPct);
-      if (state.sort === 'recent') list.sort((a,b) => b.updatedAt - a.updatedAt);
-      if (state.sort === 'flow') list.sort((a,b) => b.aggressiveFlowUsd - a.aggressiveFlowUsd);
-      if (state.sort === 'edge') list.sort((a,b) => b.fairEdge - a.fairEdge);
-      if (state.sort === 'wallet') list.sort((a,b) => b.walletScore - a.walletScore);
+      if (state.tab === 'whale') list = list.filter(x => x.whaleCount >= 2 || x.signal === 'Whale flow');
+      if (state.tab === 'smart') list = list.filter(x => x.smartWalletScore >= 70 || x.signal === 'Smart edge');
+      if (state.tab === 'pressure') list = list.filter(x => x.signal === 'Pressure' || x.signal === 'Fast move');
+      if (state.tab === 'history') list = list.filter(x => (histories.get(x.tokenId) || []).length >= 8);
+
+      if (state.sort === 'drop') list.sort((a, b) => b.dropPct - a.dropPct);
+      if (state.sort === 'recent') list.sort((a, b) => b.updatedAt - a.updatedAt);
+      if (state.sort === 'flow') list.sort((a, b) => b.aggressiveFlowUsd - a.aggressiveFlowUsd);
+      if (state.sort === 'wallet') list.sort((a, b) => b.smartWalletScore - a.smartWalletScore);
+      if (state.sort === 'volume') list.sort((a, b) => b.volume24h - a.volume24h);
       return list;
     }
 
-    function renderFeed(){
-      const box = document.getElementById('feedBody');
-      const list = filtered();
-      const sel = selected(); if (sel) state.selectedId = sel.id;
-      if (!list.length) { box.innerHTML = '<div class="feed-row"><div>No matching markets.</div><div></div><div></div><div></div><div class="hide-sm"></div><div class="hide-md"></div><div class="hide-md"></div><div class="hide-sm"></div><div class="hide-sm"></div></div>'; return; }
-      box.innerHTML = list.map(m => {
-        const badgeClass = m.signal === 'Whale Flow' ? 'whale' : m.signal === 'Fast Move' ? 'fast' : m.signal === 'Fair Edge' ? 'edge' : '';
-        return `<div class="feed-row ${sel && sel.id===m.id ? 'active':''}" data-id="${esc(m.id)}">
-          <div><div class="mname">${esc(m.market)}</div><div class="meta">${esc(m.category)} · ${ago(m.updatedAt)} · wallet ${m.walletTier}</div></div>
-          <div>${esc(m.outcome)}</div>
-          <div class="green">${ago(m.updatedAt)}</div>
-          <div>${prob(m.openingPrice)} <span class="red">→ ${prob(m.currentPrice)}</span></div>
-          <div class="hide-sm ${m.fairEdge > 0 ? 'green' : 'red'}">${prob(m.fairPrice)}</div>
-          <div class="hide-md">${m.dropPct.toFixed(2)}%</div>
-          <div class="hide-md ${m.fairEdge > 0 ? 'green' : 'red'}">${m.fairEdge.toFixed(1)}%</div>
-          <div class="hide-sm ${m.walletScore > 75 ? 'cyan' : m.walletScore > 55 ? 'yellow' : 'muted'}">${m.walletScore}</div>
-          <div class="hide-sm"><span class="badge ${badgeClass}">${esc(m.signal)}</span></div>
-        </div>`;
-      }).join('');
-      box.querySelectorAll('.feed-row[data-id]').forEach(el => el.onclick = () => { state.selectedId = el.dataset.id; render(); });
+    function getSelected() {
+      const list = filteredMarkets();
+      return list.find(x => x.id === state.selectedId) || list[0] || null;
     }
 
-    function renderTop(){
-      document.getElementById('liveStatus').textContent = state.live ? 'Polymarket realtime feed' : 'Realtime paused';
-      document.getElementById('eventCount').textContent = `${state.events.toLocaleString()} events`;
+    function renderControls() {
+      document.getElementById('controlsArea').style.display = state.controlsHidden ? 'none' : 'block';
+      document.getElementById('toggleControlsBtn').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls';
+      document.getElementById('streamStatus').textContent = state.liveMode ? 'Polymarket realtime feed' : 'Realtime paused';
+      document.getElementById('eventCounter').textContent = `${state.totalEvents.toLocaleString()} events processed`;
       document.getElementById('sourceLabel').textContent = state.sourceLabel;
-      document.getElementById('syncLabel').textContent = `Last sync: ${state.lastSync ? ago(state.lastSync) : '—'}`;
-      document.getElementById('liveBtn').textContent = state.live ? 'Live' : 'Paused';
+      document.getElementById('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
+      document.getElementById('searchInput').value = state.search;
+      document.getElementById('liveBtn').textContent = state.liveMode ? 'Live' : 'Paused';
       document.getElementById('muteBtn').textContent = state.muted ? 'Muted' : 'Mute all';
-      document.getElementById('toolbar').classList.toggle('hidden', state.controlsHidden);
-      document.getElementById('errorArea').innerHTML = state.error ? `<div class="notice">${esc(state.error)}</div>` : '';
       document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === state.tab));
-      const list = filtered();
-      document.getElementById('kpiStrip1').textContent = `Tracked: ${markets().length} · Active Drops: ${list.length}`;
-      document.getElementById('kpiStrip2').textContent = `Whale Signals: ${list.filter(x=>x.signal==='Whale Flow').length} · Fair Edge+: ${list.filter(x=>x.fairEdge>0).length}`;
-      document.getElementById('kpiStrip3').textContent = `Aggressive Flow: ${usd(list.reduce((s,x)=>s+x.aggressiveFlowUsd,0))}`;
-      const catSel = document.getElementById('categorySelect');
-      const cats = ['all', ...Array.from(new Set(markets().map(x=>x.category))).sort((a,b)=>a.localeCompare(b))];
-      catSel.innerHTML = cats.map(c => `<option value="${esc(c)}">${c==='all'?'All categories':esc(c)}</option>`).join('');
-      catSel.value = state.category;
+
+      const cats = ['all', ...Array.from(new Set(getMarkets().map(x => x.category))).sort((a,b) => a.localeCompare(b))];
+      const catSelect = document.getElementById('categorySelect');
+      catSelect.innerHTML = cats.map(c => `<option value="${escapeHtml(c)}">${c === 'all' ? 'All categories' : escapeHtml(c)}</option>`).join('');
+      catSelect.value = state.category;
       document.getElementById('sideSelect').value = state.side;
       document.getElementById('sortSelect').value = state.sort;
       document.getElementById('windowSelect').value = String(state.baselineWindowMs);
       document.getElementById('minDropSelect').value = String(state.minDrop);
-      document.getElementById('minVolumeSelect').value = String(state.minVolume);
-      document.getElementById('walletFilterSelect').value = String(state.minWallet);
+      document.getElementById('volumeSelect').value = String(state.minVolume);
+
+      const list = filteredMarkets();
+      const whales = list.filter(x => x.signal === 'Whale flow').length;
+      const smart = list.filter(x => x.smartWalletScore >= 70).length;
+      const fairPlus = list.filter(x => x.fairEdge > 0).length;
+      document.getElementById('dropStats').textContent = `Drops: ${list.length} · Whale: ${whales} · Smart: ${smart}`;
+      document.getElementById('marketStats').textContent = `Markets: ${getMarkets().length} · Fair edge+: ${fairPlus}`;
+
+      const err = document.getElementById('errorArea');
+      err.innerHTML = state.error ? `<div class="notice">${escapeHtml(state.error)}</div>` : '';
     }
 
-    function renderChart(m){
-      const box = document.getElementById('chartPane');
-      if (!m) { box.innerHTML = ''; return; }
-      const pts = histories.get(m.tokenId) || [];
-      if (pts.length < 2) { box.innerHTML = '<div class="tiny" style="padding:12px">Waiting for more quote history...</div>'; return; }
-      const w=400,h=180,pad=14; const vals = pts.map(x=>x.p); const min=Math.min(...vals,m.fairPrice,m.openingPrice), max=Math.max(...vals,m.fairPrice,m.openingPrice); const range=Math.max(.001,max-min);
-      const pointLine = arr => arr.map((v,i)=>`${pad+(i/Math.max(1,arr.length-1))*(w-pad*2)},${h-pad-((v-min)/range)*(h-pad*2)}`).join(' ');
-      const prices = pts.map(x=>x.p); const fairArr = pts.map(()=>m.fairPrice); const openArr = pts.map(()=>m.openingPrice);
-      box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-        <polyline fill="none" stroke="rgba(248,196,79,.8)" stroke-width="2" stroke-dasharray="4 4" points="${pointLine(openArr)}"></polyline>
-        <polyline fill="none" stroke="rgba(49,209,125,.82)" stroke-width="2" stroke-dasharray="5 4" points="${pointLine(fairArr)}"></polyline>
-        <polyline fill="none" stroke="rgba(98,168,255,.95)" stroke-width="3" points="${pointLine(prices)}"></polyline>
-      </svg>`;
+    function renderRows() {
+      const rowsEl = document.getElementById('rows');
+      const list = filteredMarkets();
+      const selected = getSelected();
+      if (selected) state.selectedId = selected.id;
+      if (!list.length) {
+        rowsEl.innerHTML = '<div class="row"><div>No matching markets.</div><div></div><div></div><div></div><div class="hide-sm"></div><div class="hide-md"></div><div class="hide-md"></div><div class="hide-sm"></div><div class="hide-sm"></div></div>';
+        return;
+      }
+      rowsEl.innerHTML = list.map(item => {
+        const badgeClass = item.signal === 'Whale flow' ? 'whale' : item.signal === 'Fast move' ? 'fast' : item.signal === 'Pressure' ? 'pressure' : item.signal === 'Smart edge' ? 'smart' : '';
+        return `
+          <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
+            <div>
+              <div class="market-title">${escapeHtml(item.market)}</div>
+              <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · ${escapeHtml(item.primaryWalletName)}</div>
+            </div>
+            <div>${escapeHtml(item.outcome)}</div>
+            <div class="green">${formatAgo(item.updatedAt)}</div>
+            <div>${formatProb(item.previousPrice)} <span class="red">→ ${formatProb(item.currentPrice)}</span></div>
+            <div class="hide-sm ${item.fairEdge >= 0 ? 'green' : 'red'}">${formatProb(item.fairPrice)}</div>
+            <div class="hide-md">${item.dropPct.toFixed(2)}%</div>
+            <div class="hide-md">${formatUsd(item.aggressiveFlowUsd)}</div>
+            <div class="hide-sm ${item.smartWalletScore >= 75 ? 'green' : item.smartWalletScore >= 55 ? 'yellow' : 'muted'}">${item.smartWalletScore}</div>
+            <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal)}</span></div>
+          </div>`;
+      }).join('');
+      rowsEl.querySelectorAll('.row[data-id]').forEach(el => el.onclick = () => { state.selectedId = el.dataset.id; render(); });
     }
 
-    function renderDetail(){
-      const m = selected();
+    function renderChart(selected) {
+      const box = document.getElementById('chartBox');
+      if (!selected) { box.innerHTML = ''; return; }
+      const pts = histories.get(selected.tokenId) || [];
+      if (pts.length < 2) { box.innerHTML = '<div class="tiny" style="padding:12px;">Waiting for more history...</div>'; return; }
+      const w = 460, h = 230, padX = 16, padY = 18;
+      const values = pts.flatMap(p => [p.price, p.fair]);
+      const min = Math.min(...values, selected.openingPrice);
+      const max = Math.max(...values, selected.openingPrice);
+      const range = Math.max(0.001, max - min);
+      const pricePoints = pts.map((p, i) => {
+        const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
+        const y = h - padY - ((p.price - min) / range) * (h - padY * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      const fairPoints = pts.map((p, i) => {
+        const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
+        const y = h - padY - ((p.fair - min) / range) * (h - padY * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      const openingY = h - padY - ((selected.openingPrice - min) / range) * (h - padY * 2);
+      box.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          <line x1="${padX}" y1="${openingY}" x2="${w-padX}" y2="${openingY}" stroke="rgba(57,217,138,0.8)" stroke-width="1.5" stroke-dasharray="4 4" />
+          <polyline fill="none" stroke="rgba(246,198,91,0.92)" stroke-width="2.2" points="${fairPoints}" />
+          <polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${pricePoints}" />
+        </svg>`;
+    }
+
+    function renderDetail() {
+      const selected = getSelected();
       const detail = document.getElementById('detailPane');
-      const recent = document.getElementById('recentPane');
-      if (!m) { detail.innerHTML = '<div class="tiny">Select a market.</div>'; recent.innerHTML = ''; return; }
+      const eventRows = document.getElementById('eventRows');
+      const walletRows = document.getElementById('walletRows');
+      if (!selected) {
+        detail.innerHTML = '<div class="tiny">Select a market from the feed.</div>';
+        eventRows.innerHTML = '';
+        walletRows.innerHTML = '';
+        return;
+      }
+
       detail.innerHTML = `
-        <div class="detail-title">${esc(m.market)}</div>
+        <div class="detail-title">${escapeHtml(selected.market)}</div>
         <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-          <span class="badge">${esc(m.category)}</span>
-          <span class="badge">${esc(m.outcome)}</span>
-          <span class="badge ${m.signal==='Whale Flow'?'whale':m.signal==='Fast Move'?'fast':m.signal==='Fair Edge'?'edge':''}">${esc(m.signal)}</span>
+          <span class="badge">${escapeHtml(selected.category)}</span>
+          <span class="badge">${escapeHtml(selected.outcome)}</span>
+          <span class="badge ${selected.signal === 'Whale flow' ? 'whale' : selected.signal === 'Fast move' ? 'fast' : selected.signal === 'Pressure' ? 'pressure' : selected.signal === 'Smart edge' ? 'smart' : ''}">${escapeHtml(selected.signal)}</span>
         </div>
-        <div class="grid2" style="margin-top:10px;">
-          <div class="mini-box"><div class="k">Opening quote</div><div class="v">${prob(m.openingPrice)}</div></div>
-          <div class="mini-box"><div class="k">Current quote</div><div class="v">${prob(m.currentPrice)}</div></div>
-          <div class="mini-box"><div class="k">Fair quote</div><div class="v">${prob(m.fairPrice)}</div></div>
-          <div class="mini-box"><div class="k">Aggressive flow</div><div class="v">${usd(m.aggressiveFlowUsd)}</div></div>
+        <div class="detail-grid" style="margin-top:10px;">
+          <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatProb(selected.openingPrice)}</div></div>
+          <div class="detail-box"><div class="k">Current price</div><div class="v">${formatProb(selected.currentPrice)}</div></div>
+          <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatProb(selected.fairPrice)}</div></div>
+          <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName)}</a></div></div>
         </div>
-        <div class="tiny" style="margin-top:10px;">Market link: ${m.slug ? `<a href="https://polymarket.com/event/${m.slug}" target="_blank" rel="noreferrer">polymarket.com</a>` : 'n/a'}</div>`;
-      const rec = recents.get(m.tokenId) || [];
-      recent.innerHTML = rec.length ? rec.map(r => `<div class="list-item"><div><div>${esc(r.label)}</div><div class="tiny">${ago(r.t)}</div></div><div class="${r.cls||''}">${esc(r.value)}</div></div>`).join('') : '<div class="tiny">No recent change history.</div>';
-      document.getElementById('statFairEdge').textContent = `${m.fairEdge.toFixed(1)}%`;
-      document.getElementById('statSpread').textContent = `${(m.spread*100).toFixed(2)}%`;
-      document.getElementById('statWallet').textContent = m.walletScore;
-      document.getElementById('statImpact').textContent = m.impact;
-      renderChart(m);
+        <div class="tiny" style="margin-top:10px;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'}</div>
+      `;
+
+      renderChart(selected);
+
+      const tape = eventTapes.get(selected.tokenId) || [];
+      eventRows.innerHTML = tape.slice(0, 24).map(ev => `
+        <div class="mini-row">
+          <div>${formatTime(ev.time)}</div>
+          <div>${formatProb(ev.fair)}</div>
+          <div>${formatProb(ev.price)}</div>
+          <div>${formatUsd(ev.size)}</div>
+          <div class="hide-evt-md"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${ev.wallet}">${escapeHtml(ev.walletName || shortWallet(ev.wallet))}</a></div>
+        </div>`).join('');
+
+      walletRows.innerHTML = state.walletRankings.slice(0, 8).map(w => `
+        <div class="mini-row">
+          <div><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${w.wallet}">${escapeHtml(w.nickname)}</a></div>
+          <div>${w.score}</div>
+          <div class="${w.pnlEdge >= 0 ? 'green' : 'red'}">${w.pnlEdge.toFixed(1)}%</div>
+          <div class="hide-wallet-sm">${w.activity}</div>
+        </div>`).join('');
+
+      document.getElementById('kpiOpening').textContent = formatProb(selected.openingPrice);
+      document.getElementById('kpiCurrent').textContent = formatProb(selected.currentPrice);
+      document.getElementById('kpiEdge').textContent = `${selected.fairEdge.toFixed(1)}%`;
+      document.getElementById('kpiSpread').textContent = `${(selected.spread * 100).toFixed(2)}%`;
+      document.getElementById('kpiFlow').textContent = formatUsd(selected.aggressiveFlowUsd);
+      document.getElementById('kpiWallet').textContent = selected.smartWalletScore;
     }
 
-    function renderTracker(){
-      const tbody = document.getElementById('trackerTable');
-      const tracked = state.tracker;
-      tbody.innerHTML = tracked.length ? tracked.map(t => `<tr><td>${esc(t.status)}</td><td>${esc(t.market)}</td><td>${prob(t.entryPrice)}</td><td>${prob(t.currentPrice)}</td><td class="${t.entryEdge > 0 ? 'green' : 'red'}">${t.entryEdge.toFixed(1)}%</td></tr>`).join('') : '<tr><td colspan="5" class="muted">No tracked markets yet.</td></tr>';
-      const won = tracked.filter(x => x.currentPrice > x.entryPrice).length;
-      const wr = tracked.length ? (won / tracked.length) * 100 : 0;
-      const avgEdge = tracked.length ? tracked.reduce((s,x)=>s+x.entryEdge,0)/tracked.length : 0;
-      const pnl = tracked.length ? tracked.reduce((s,x)=>s+((x.currentPrice-x.entryPrice)*100),0)/tracked.length : 0;
-      document.getElementById('trackerCount').textContent = tracked.length;
-      document.getElementById('trackerWinrate').textContent = `${wr.toFixed(0)}%`;
-      document.getElementById('trackerEdge').textContent = `${avgEdge.toFixed(1)}%`;
-      document.getElementById('trackerPnl').textContent = `${pnl.toFixed(1)}%`;
+    function render() {
+      renderControls();
+      renderRows();
+      renderDetail();
     }
 
-    function renderWallets(){
-      const all = [...markets()].sort((a,b)=>b.walletScore-a.walletScore).slice(0,20);
-      const tbody = document.getElementById('walletTable');
-      tbody.innerHTML = all.map(m => `<tr><td>${makeWalletTag(m.walletScore)}</td><td>${m.walletTier}</td><td>${m.walletScore}</td><td>${m.impact}</td></tr>`).join('');
+    function resetBaselineWindow() {
+      getMarkets().forEach(m => {
+        m.openingPrice = m.currentPrice;
+        m.previousPrice = m.currentPrice;
+        recomputeMarket(m);
+      });
+      render();
     }
 
-    function renderRight(){
-      document.querySelectorAll('.section-tab').forEach(el => el.classList.toggle('active', el.dataset.right === state.rightTab));
-      document.getElementById('right-detail').classList.toggle('hidden', state.rightTab !== 'detail');
-      document.getElementById('right-tracker').classList.toggle('hidden', state.rightTab !== 'tracker');
-      document.getElementById('right-wallets').classList.toggle('hidden', state.rightTab !== 'wallets');
-      document.getElementById('right-alerts').classList.toggle('hidden', state.rightTab !== 'alerts');
-      renderDetail(); renderTracker(); renderWallets();
-      document.getElementById('alertTriggered').textContent = markets().filter(x => x.signal === 'Whale Flow' || x.fairEdge > 3).length;
-    }
-
-    function render(){ renderTop(); renderFeed(); renderRight(); }
-
-    function addRecent(tokenId, label, value, cls=''){
-      const arr = recents.get(tokenId) || [];
-      arr.unshift({ t: Date.now(), label, value, cls });
-      while (arr.length > 14) arr.pop();
-      recents.set(tokenId, arr);
-    }
-    function addHistory(tokenId, p){ const arr = histories.get(tokenId) || []; arr.push({ t: Date.now(), p }); while (arr.length > 50) arr.shift(); histories.set(tokenId, arr); }
-
-    async function bootstrap(){
+    async function bootstrap() {
       seedFallback();
       render();
       try {
         const res = await fetch(GAMMA_EVENTS_URL);
         const events = await res.json();
-        const out = [];
-        tokenMap = new Map(); histories = new Map(); recents = new Map();
+        const loaded = [];
         for (const eventItem of (Array.isArray(events) ? events : [])) {
-          for (const m of (Array.isArray(eventItem?.markets) ? eventItem.markets : [])) {
-            const tokenId = pickTokenId(m); if (!tokenId) continue;
-            const cur = n(m?.lastTradePrice ?? m?.last_trade_price ?? m?.bestBid ?? m?.price ?? m?.outcomePrice, 0);
-            const market = newMarket({
-              id: String(m?.id || m?.slug || tokenId), tokenId, market: m?.question || eventItem?.title || 'Untitled market',
-              category: eventItem?.category || m?.category || m?.groupItemTitle || m?.seriesSlug || 'Other',
-              outcome: pickOutcomeLabel(m), openingPrice: cur || (Math.random()*.7+.15), currentPrice: cur || (Math.random()*.7+.15),
-              volume24h: n(m?.volume24hr ?? m?.volume24h ?? m?.volume24Hr ?? m?.volume, Math.random()*250000),
-              aggressiveFlowUsd: 0, spread: Math.max(.005, n(m?.bestAsk,cur) - n(m?.bestBid,cur)), slug: m?.slug || eventItem?.slug || '', updatedAt: Date.now()
+          for (const market of (Array.isArray(eventItem?.markets) ? eventItem.markets : [])) {
+            const tokenId = pickTokenId(market);
+            if (!tokenId) continue;
+            const currentPrice = asNumber(market?.lastTradePrice ?? market?.last_trade_price ?? market?.bestBid ?? market?.price ?? market?.outcomePrice, 0);
+            const openingPrice = currentPrice || (Math.random() * 0.7 + 0.15);
+            const m = createMarket({
+              id: String(market?.id || market?.slug || tokenId),
+              tokenId,
+              market: market?.question || eventItem?.title || 'Untitled market',
+              category: eventItem?.category || market?.category || market?.groupItemTitle || market?.seriesSlug || 'Other',
+              outcome: pickOutcomeLabel(market),
+              openingPrice,
+              currentPrice,
+              volume24h: asNumber(market?.volume24hr ?? market?.volume24h ?? market?.volume24Hr ?? market?.volume, 0),
+              aggressiveFlowUsd: 0,
+              spread: Math.max(0.004, asNumber(market?.bestAsk, currentPrice) - asNumber(market?.bestBid, currentPrice)),
+              slug: market?.slug || eventItem?.slug || '',
+              updatedAt: Date.now()
             });
-            out.push(market); tokenMap.set(tokenId, market);
-            histories.set(tokenId, [{t:Date.now()-240000,p:market.openingPrice},{t:Date.now()-120000,p:(market.openingPrice+market.currentPrice)/2},{t:Date.now(),p:market.currentPrice}]);
-            recents.set(tokenId, [{ t: Date.now(), label: 'Opening tracked', value: prob(market.openingPrice), cls: 'yellow' }]);
+            loaded.push(m);
+            marketByToken.set(tokenId, m);
+            const wallet = createWallet(m.primaryWallet);
+            wallet.activity += 1;
+            for (let i = 0; i < 22; i++) {
+              const price = clamp(openingPrice + (Math.random() * 0.02 - 0.01), 0.01, 0.99);
+              const fair = clamp(price + Math.min(0.02, m.spread * 0.5), 0.01, 0.99);
+              pushHistory(tokenId, { t: Date.now() - (22 - i) * 120000, price, fair });
+            }
+            for (let i = 0; i < 8; i++) {
+              const walletId = i % 2 === 0 ? m.primaryWallet : randomWallet(`${m.id}-${i}`);
+              const walletObj = createWallet(walletId);
+              walletObj.activity += 1;
+              pushEvent(tokenId, {
+                time: Date.now() - i * 180000,
+                fair: clamp(m.fairPrice + (Math.random() * 0.01 - 0.005), 0.01, 0.99),
+                price: clamp(m.currentPrice + (Math.random() * 0.012 - 0.006), 0.01, 0.99),
+                size: Math.round(500 + Math.random() * 3000),
+                wallet: walletId,
+                walletName: walletObj.nickname
+              });
+            }
           }
         }
-        if (out.length) {
-          state.markets = out.slice(0, 220); state.selectedId = state.markets[0].id; state.sourceLabel = 'Live metadata from Polymarket Gamma API'; state.lastSync = Date.now(); state.error = '';
+        if (loaded.length) {
+          state.markets = loaded.slice(0, 220);
+          state.selectedId = state.selectedId || state.markets[0]?.id;
+          state.sourceLabel = 'Live metadata from Polymarket Gamma API';
+          state.lastSync = Date.now();
+          state.error = '';
+          updateWalletRanking();
+          render();
         }
       } catch (e) {
-        state.sourceLabel = 'Fallback monitor mode'; state.error = 'Live metadata could not be loaded. Running on fallback + realtime upgrade mode.';
+        state.sourceLabel = 'Fallback market intelligence mode';
+        state.error = 'Live market metadata could not be loaded. Running in fallback mode.';
+        render();
       }
       openSocket();
       if (baselineTimer) clearInterval(baselineTimer);
-      baselineTimer = setInterval(() => {
-        markets().forEach(m => { m.openingPrice = m.currentPrice; derive(m); addRecent(m.tokenId,'Opening reset', prob(m.openingPrice), 'yellow'); });
-        render();
-      }, state.baselineWindowMs);
-      render();
+      baselineTimer = setInterval(resetBaselineWindow, state.baselineWindowMs);
     }
 
-    function openSocket(){
-      if (!state.live) return;
-      const ids = markets().map(x=>x.tokenId).filter(Boolean).slice(0,120); if (!ids.length) return;
+    function openSocket() {
+      if (!state.liveMode) return;
+      const tokenIds = getMarkets().map(x => x.tokenId).filter(Boolean).slice(0, 120);
+      if (!tokenIds.length) return;
       if (ws) ws.close();
       ws = new WebSocket(MARKET_WS_URL);
-      ws.onopen = () => { state.error = ''; ws.send(JSON.stringify({ assets_ids: ids, type: 'market', custom_feature_enabled: true })); render(); };
-      ws.onerror = () => { state.error = 'WebSocket disconnected. The terminal still runs, but live updates paused.'; render(); };
+      ws.onopen = () => { state.error = ''; render(); ws.send(JSON.stringify({ assets_ids: tokenIds, type: 'market', custom_feature_enabled: true })); };
+      ws.onerror = () => { state.error = 'WebSocket disconnected. The terminal still works, but live updates paused.'; render(); };
       ws.onclose = () => render();
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         try {
-          const payload = JSON.parse(event.data); const arr = Array.isArray(payload) ? payload : [payload]; state.events += arr.length;
-          for (const msg of arr) {
-            if (!msg) continue;
-            if (msg.event_type === 'price_change' && Array.isArray(msg.price_changes)) {
-              for (const pc of msg.price_changes) {
-                const m = tokenMap.get(String(pc.asset_id||'')); if (!m) continue;
-                const bid = n(pc.best_bid, m.currentPrice), ask = n(pc.best_ask, m.currentPrice), lp = n(pc.price, m.currentPrice);
-                const mid = bid && ask && ask < 1 ? (bid + ask) / 2 : lp;
-                m.previousPrice = m.currentPrice; m.currentPrice = mid || lp || m.currentPrice; m.spread = Math.max(0, ask - bid); m.updatedAt = Date.now();
-                const flowAdd = n(pc.size,0) * m.currentPrice; m.aggressiveFlowUsd += flowAdd; if (flowAdd > 10000) m.whaleTrades += 1;
-                derive(m); addHistory(m.tokenId, m.currentPrice); addRecent(m.tokenId, 'Price change', `${prob(m.previousPrice)} → ${prob(m.currentPrice)}`, m.currentPrice < m.previousPrice ? 'red' : 'green');
+          const payload = JSON.parse(event.data);
+          const rows = Array.isArray(payload) ? payload : [payload];
+          state.totalEvents += rows.length;
+          for (const message of rows) {
+            if (!message) continue;
+
+            if (message.event_type === 'price_change' && Array.isArray(message.price_changes)) {
+              for (const pc of message.price_changes) {
+                const tokenId = String(pc.asset_id || '');
+                const m = marketByToken.get(tokenId);
+                if (!m) continue;
+                const bestBid = asNumber(pc.best_bid, m.currentPrice);
+                const bestAsk = asNumber(pc.best_ask, m.currentPrice);
+                const px = asNumber(pc.price, m.currentPrice);
+                const midpoint = bestBid && bestAsk && bestAsk < 1 ? (bestBid + bestAsk) / 2 : px;
+                const size = Math.max(0, asNumber(pc.size, 0) * (midpoint || px || m.currentPrice || 0));
+                m.previousPrice = m.currentPrice;
+                m.currentPrice = midpoint || px || m.currentPrice;
+                m.lastTradePrice = px || m.lastTradePrice;
+                m.spread = Math.max(0.002, bestAsk - bestBid);
+                m.aggressiveFlowUsd += size;
+                if (size >= 9000) m.whaleCount += 1;
+                m.updatedAt = Date.now();
+                recomputeMarket(m);
+                const wallet = size >= 9000 ? m.primaryWallet : randomWallet(`${m.id}-${Date.now()}-${size}`);
+                const walletObj = createWallet(wallet);
+                walletObj.activity += 1;
+                walletObj.lastSeen = Date.now();
+                walletObj.score = clamp(walletObj.score + (size >= 9000 ? 2 : 0), 1, 99);
+                if (size >= 9000) m.primaryWallet = wallet;
+                m.primaryWalletName = createWallet(m.primaryWallet).nickname;
+                pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+                pushEvent(tokenId, {
+                  time: Date.now(),
+                  fair: m.fairPrice,
+                  price: m.currentPrice,
+                  size: Math.round(size || 500),
+                  wallet,
+                  walletName: walletObj.nickname
+                });
               }
             }
-            if (msg.event_type === 'last_trade_price') {
-              const m = tokenMap.get(String(msg.asset_id||'')); if (!m) continue;
-              m.previousPrice = m.currentPrice; m.currentPrice = n(msg.price, m.currentPrice); m.updatedAt = Date.now(); derive(m); addHistory(m.tokenId, m.currentPrice); addRecent(m.tokenId,'Last trade', prob(m.currentPrice), 'cyan');
+
+            if (message.event_type === 'last_trade_price') {
+              const tokenId = String(message.asset_id || '');
+              const m = marketByToken.get(tokenId);
+              if (!m) continue;
+              m.previousPrice = m.currentPrice;
+              m.currentPrice = asNumber(message.price, m.currentPrice);
+              m.lastTradePrice = m.currentPrice;
+              m.updatedAt = Date.now();
+              recomputeMarket(m);
+              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+              pushEvent(tokenId, {
+                time: Date.now(),
+                fair: m.fairPrice,
+                price: m.currentPrice,
+                size: 500,
+                wallet: m.primaryWallet,
+                walletName: m.primaryWalletName
+              });
             }
-            if (msg.event_type === 'book') {
-              const m = tokenMap.get(String(msg.asset_id||'')); if (!m) continue;
-              const bids = Array.isArray(msg.bids) ? msg.bids : [], asks = Array.isArray(msg.asks) ? msg.asks : [];
-              const bid = bids.length ? n(bids[bids.length-1]?.price, m.currentPrice) : m.currentPrice;
-              const ask = asks.length ? n(asks[0]?.price, m.currentPrice) : m.currentPrice;
-              const mid = bid && ask ? (bid + ask) / 2 : m.currentPrice;
-              m.previousPrice = m.currentPrice; m.currentPrice = mid || m.currentPrice; m.spread = Math.max(0, ask - bid); m.updatedAt = Date.now(); derive(m); addHistory(m.tokenId,m.currentPrice); addRecent(m.tokenId,'Book update',`Spread ${(m.spread*100).toFixed(2)}%`,'yellow');
+
+            if (message.event_type === 'book') {
+              const tokenId = String(message.asset_id || '');
+              const m = marketByToken.get(tokenId);
+              if (!m) continue;
+              const bids = Array.isArray(message.bids) ? message.bids : [];
+              const asks = Array.isArray(message.asks) ? message.asks : [];
+              const bestBid = bids.length ? asNumber(bids[bids.length - 1]?.price, m.currentPrice) : m.currentPrice;
+              const bestAsk = asks.length ? asNumber(asks[0]?.price, m.currentPrice) : m.currentPrice;
+              const midpoint = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : m.currentPrice;
+              m.previousPrice = m.currentPrice;
+              m.currentPrice = midpoint || m.currentPrice;
+              m.spread = Math.max(0.002, bestAsk - bestBid);
+              m.updatedAt = Date.now();
+              recomputeMarket(m);
+              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+              pushEvent(tokenId, {
+                time: Date.now(),
+                fair: m.fairPrice,
+                price: m.currentPrice,
+                size: 1000,
+                wallet: m.primaryWallet,
+                walletName: m.primaryWalletName
+              });
             }
           }
-          state.lastSync = Date.now(); render();
+          updateWalletRanking();
+          state.lastSync = Date.now();
+          render();
         } catch {}
       };
     }
 
-    document.querySelectorAll('.tab').forEach(el => el.addEventListener('click', ()=>{ state.tab = el.dataset.tab; render(); }));
-    document.querySelectorAll('.section-tab').forEach(el => el.addEventListener('click', ()=>{ state.rightTab = el.dataset.right; render(); }));
     document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; render(); });
     document.getElementById('categorySelect').addEventListener('change', e => { state.category = e.target.value; render(); });
     document.getElementById('sideSelect').addEventListener('change', e => { state.side = e.target.value; render(); });
     document.getElementById('sortSelect').addEventListener('change', e => { state.sort = e.target.value; render(); });
-    document.getElementById('windowSelect').addEventListener('change', e => { state.baselineWindowMs = n(e.target.value,300000); if (baselineTimer) clearInterval(baselineTimer); baselineTimer = setInterval(()=>{ markets().forEach(m => { m.openingPrice = m.currentPrice; derive(m); }); render(); }, state.baselineWindowMs); render(); });
-    document.getElementById('minDropSelect').addEventListener('change', e => { state.minDrop = n(e.target.value,3); render(); });
-    document.getElementById('minVolumeSelect').addEventListener('change', e => { state.minVolume = n(e.target.value,0); render(); });
-    document.getElementById('walletFilterSelect').addEventListener('change', e => { state.minWallet = n(e.target.value,0); render(); });
-    document.getElementById('toggleControls').addEventListener('click', ()=>{ state.controlsHidden = !state.controlsHidden; document.getElementById('toggleControls').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls'; render(); });
-    document.getElementById('liveBtn').addEventListener('click', ()=>{ state.live = !state.live; if (!state.live && ws) ws.close(); if (state.live) openSocket(); render(); });
-    document.getElementById('muteBtn').addEventListener('click', ()=>{ state.muted = !state.muted; render(); });
-    document.getElementById('alertsBtn').addEventListener('click', ()=>alert('Alert configuration belongs in the backend version. The UI block is already prepared.'));
-    document.getElementById('trackObservedBtn').addEventListener('click', ()=>{ const m = selected(); if (!m) return; if (state.tracker.some(x => x.id === m.id)) return; state.tracker.unshift({ id:m.id, market:m.market, status:'Observed', entryPrice:m.currentPrice, currentPrice:m.currentPrice, entryEdge:m.fairEdge }); render(); });
-    document.getElementById('trackEnteredBtn').addEventListener('click', ()=>{ const m = selected(); if (!m) return; if (state.tracker.some(x => x.id === m.id)) return; state.tracker.unshift({ id:m.id, market:m.market, status:'Entered', entryPrice:m.currentPrice, currentPrice:m.currentPrice, entryEdge:m.fairEdge }); render(); });
-
-    setInterval(()=>{ state.tracker = state.tracker.map(t => { const m = markets().find(x => x.id === t.id); return m ? { ...t, currentPrice: m.currentPrice } : t; }); renderTracker(); }, 4000);
+    document.getElementById('windowSelect').addEventListener('change', e => {
+      state.baselineWindowMs = asNumber(e.target.value, 300000);
+      if (baselineTimer) clearInterval(baselineTimer);
+      baselineTimer = setInterval(resetBaselineWindow, state.baselineWindowMs);
+      resetBaselineWindow();
+    });
+    document.getElementById('minDropSelect').addEventListener('change', e => { state.minDrop = asNumber(e.target.value, 3); render(); });
+    document.getElementById('volumeSelect').addEventListener('change', e => { state.minVolume = asNumber(e.target.value, 0); render(); });
+    document.querySelectorAll('.tab').forEach(el => el.addEventListener('click', () => { state.tab = el.dataset.tab; render(); }));
+    document.getElementById('toggleControlsBtn').addEventListener('click', () => { state.controlsHidden = !state.controlsHidden; render(); });
+    document.getElementById('muteBtn').addEventListener('click', () => { state.muted = !state.muted; render(); });
+    document.getElementById('alertsBtn').addEventListener('click', () => alert('Alert configuration belongs in the backend build.'));
+    document.getElementById('liveBtn').addEventListener('click', () => {
+      state.liveMode = !state.liveMode;
+      if (!state.liveMode && ws) ws.close();
+      if (state.liveMode) openSocket();
+      render();
+    });
 
     bootstrap();
   </script>
