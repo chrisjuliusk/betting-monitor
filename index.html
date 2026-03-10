@@ -438,7 +438,7 @@
       let h = 0; for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0; return h;
     }
     function walletLabel(wallet) {
-      return `Anon ${shortWallet(wallet)}`;
+      return shortWallet(wallet);
     }
 
     function createWallet(wallet) {
@@ -851,12 +851,12 @@
           <div>${formatOdds(ev.fair)} <span class="tiny">${formatProb(ev.fair)}</span></div>
           <div>${formatOdds(ev.price)} <span class="tiny">${formatProb(ev.price)}</span></div>
           <div>${formatUsd(ev.size)}</div>
-          <div class="hide-evt-md"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${ev.wallet}">${escapeHtml(ev.walletName || shortWallet(ev.wallet))}</a></div>
+          <div class="hide-evt-md"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${ev.wallet}">${escapeHtml(ev.walletName || shortWallet(ev.wallet))}</a><div class="tiny">${escapeHtml(ev.wallet || '')}</div></div>
         </div>`).join('');
 
       walletRows.innerHTML = state.walletRankings.slice(0, 8).map(w => `
         <div class="mini-row">
-          <div><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${w.wallet}">${escapeHtml(w.nickname)}</a></div>
+          <div><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${w.wallet}">${escapeHtml(w.nickname || shortWallet(w.wallet))}</a><div class="tiny">${escapeHtml(w.wallet)}</div></div>
           <div>${w.score}</div>
           <div class="${w.pnlEdge >= 0 ? 'green' : 'red'}">${w.pnlEdge.toFixed(1)}%</div>
           <div class="hide-wallet-sm">${w.activity}</div>
