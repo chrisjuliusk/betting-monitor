@@ -107,10 +107,13 @@
     .chart-box { height: 230px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(180deg, rgba(98,169,255,0.09), rgba(255,255,255,0.02)); overflow: hidden; position: relative; }
     .chart-box svg { width: 100%; height: 100%; display: block; }
     .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .legend span { cursor: pointer; padding: 4px 8px; border-radius: 999px; border: 1px solid transparent; }
+    .legend span.active { border-color: var(--line); background: rgba(255,255,255,0.04); color: white; }
     .legend span::before { content: ''; display: inline-block; width: 10px; height: 2px; margin-right: 6px; vertical-align: middle; }
     .legend .price::before { background: var(--blue); }
-    .legend .fair::before { background: var(--yellow); }
+    .legend .fair::before { background: white; }
     .legend .open::before { background: var(--green); }
+    .legend .limit::before { background: var(--yellow); }
     .table-mini { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
     .mini-head, .mini-row { display: grid; gap: 8px; align-items: center; padding: 8px 10px; font-size: 11px; }
     .mini-head { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.44); text-transform: uppercase; letter-spacing: 0.12em; }
@@ -147,7 +150,6 @@
       <div class="left-top">
         <div>
           <div class="brand-title">Betting Monitor</div>
-          <div class="sub">prediction markets terminal</div>
         </div>
         <div class="sub"><span class="dot"></span><span id="streamStatus">Polymarket realtime feed</span></div>
         <div class="sub" id="eventCounter">0 events processed</div>
@@ -238,10 +240,11 @@
           <div class="side-card">
             <div class="side-title">Price progression</div>
             <div class="chart-box" id="chartBox"></div>
-            <div class="legend">
-              <span class="price">Price</span>
-              <span class="fair">Fair</span>
-              <span class="open">Opening</span>
+            <div class="legend" id="chartLegendControls">
+              <span class="price toggle-line active" data-line="price">Price</span>
+              <span class="fair toggle-line active" data-line="fair">Fair</span>
+              <span class="open toggle-line active" data-line="open">Opening</span>
+              <span class="limit toggle-line active" data-line="limit">Order size / limit</span>
             </div>
           </div>
 
@@ -285,6 +288,15 @@
           </div>
 
           <div class="side-card">
+            <div class="side-card">
+            <div class="side-title">Bet tracker</div>
+            <div id="betTrackerPanel">
+              <button class="btn primary" id="openBetTrackerBtn">Log market</button>
+              <div class="tiny" style="margin-top:8px;">Click any market in the feed and add it to your tracker with optional tags and stake notes.</div>
+            </div>
+          </div>
+
+          <div class="side-card">
             <div class="side-title">Notes</div>
             <div class="tiny">
               This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. In this browser version, wallet analytics are heuristic and built from live market events plus synthetic profile labels. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.
@@ -300,6 +312,7 @@
     const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
 
     const state = {
+      chartLines: { price: true, fair: true, open: true, limit: true },
       search: "",
       category: "all",
       side: "all",
@@ -332,6 +345,11 @@
     function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
     function formatUsd(v) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(asNumber(v)); }
     function formatProb(v) { return `${(asNumber(v) * 100).toFixed(1)}%`; }
+    function formatOdds(v) {
+      const p = asNumber(v);
+      if (p <= 0 || p >= 1) return '—';
+      return (1 / p).toFixed(2);
+    }
     function formatAgo(ts) { if (!ts) return '—'; const s = Math.floor((Date.now() - ts) / 1000); if (s < 60) return `${s}s ago`; const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); return `${h}h ago`; }
     function formatTime(ts) {
       const d = new Date(ts);
@@ -374,6 +392,7 @@
     }
 
     function pushHistory(tokenId, point) {
+      point.limit = point.limit || 500;
       const arr = histories.get(tokenId) || [];
       arr.push(point);
       while (arr.length > 70) arr.shift();
@@ -466,7 +485,8 @@
         for (let t = 0; t < 28; t++) {
           const price = clamp(m.openingPrice - ((m.openingPrice - m.currentPrice) * (t / 27)) + (Math.sin(t) * 0.004), 0.01, 0.99);
           const fair = clamp(price + Math.min(0.02, m.spread * 0.5), 0.01, 0.99);
-          pushHistory(m.tokenId, { t: Date.now() - (28 - t) * 360000, price, fair });
+          const limit = Math.round(500 + Math.random() * 2500);
+          pushHistory(m.tokenId, { t: Date.now() - (28 - t) * 360000, price, fair, limit });
         }
         for (let e = 0; e < 16; e++) {
           const walletId = e % 3 === 0 ? m.primaryWallet : randomWallet(`${m.id}-${e}`);
@@ -601,9 +621,10 @@
       const pts = histories.get(selected.tokenId) || [];
       if (pts.length < 2) { box.innerHTML = '<div class="tiny" style="padding:12px;">Waiting for more history...</div>'; return; }
       const w = 460, h = 230, padX = 16, padY = 18;
-      const values = pts.flatMap(p => [p.price, p.fair]);
-      const min = Math.min(...values, selected.openingPrice);
-      const max = Math.max(...values, selected.openingPrice);
+      const allValues = [];
+      pts.forEach(p => { allValues.push(p.price, p.fair); });
+      const min = Math.min(...allValues, selected.openingPrice);
+      const max = Math.max(...allValues, selected.openingPrice);
       const range = Math.max(0.001, max - min);
       const pricePoints = pts.map((p, i) => {
         const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
@@ -615,13 +636,23 @@
         const y = h - padY - ((p.fair - min) / range) * (h - padY * 2);
         return `${x},${y}`;
       }).join(' ');
+      const limitMax = Math.max(...pts.map(p => p.limit || 0), 1);
+      const limitBars = pts.map((p, i) => {
+        const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
+        const barH = ((p.limit || 0) / limitMax) * 55;
+        return `<line x1="${x}" y1="${h - 4}" x2="${x}" y2="${h - 4 - barH}" stroke="rgba(246,198,91,0.65)" stroke-width="3" />`;
+      }).join('');
       const openingY = h - padY - ((selected.openingPrice - min) / range) * (h - padY * 2);
-      box.innerHTML = `
-        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-          <line x1="${padX}" y1="${openingY}" x2="${w-padX}" y2="${openingY}" stroke="rgba(57,217,138,0.8)" stroke-width="1.5" stroke-dasharray="4 4" />
-          <polyline fill="none" stroke="rgba(246,198,91,0.92)" stroke-width="2.2" points="${fairPoints}" />
-          <polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${pricePoints}" />
+      box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          ${state.chartLines.limit ? limitBars : ''}
+          ${state.chartLines.open ? `<line x1="${padX}" y1="${openingY}" x2="${w-padX}" y2="${openingY}" stroke="rgba(57,217,138,0.8)" stroke-width="1.5" stroke-dasharray="4 4" />` : ''}
+          ${state.chartLines.fair ? `<polyline fill="none" stroke="rgba(255,255,255,0.96)" stroke-width="2.2" points="${fairPoints}" />` : ''}
+          ${state.chartLines.price ? `<polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${pricePoints}" />` : ''}
         </svg>`;
+      const legend = document.getElementById('chartLegendControls');
+      legend.querySelectorAll('.toggle-line').forEach(el => {
+        el.classList.toggle('active', !!state.chartLines[el.dataset.line]);
+      });
     }
 
     function renderDetail() {
@@ -644,9 +675,9 @@
           <span class="badge ${selected.signal === 'Whale flow' ? 'whale' : selected.signal === 'Fast move' ? 'fast' : selected.signal === 'Pressure' ? 'pressure' : selected.signal === 'Smart edge' ? 'smart' : ''}">${escapeHtml(selected.signal)}</span>
         </div>
         <div class="detail-grid" style="margin-top:10px;">
-          <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatProb(selected.openingPrice)}</div></div>
-          <div class="detail-box"><div class="k">Current price</div><div class="v">${formatProb(selected.currentPrice)}</div></div>
-          <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatProb(selected.fairPrice)}</div></div>
+          <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatOdds(selected.openingPrice)}</div><div class="tiny">${formatProb(selected.openingPrice)}</div></div>
+          <div class="detail-box"><div class="k">Current price</div><div class="v">${formatOdds(selected.currentPrice)}</div><div class="tiny">${formatProb(selected.currentPrice)}</div></div>
+          <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatOdds(selected.fairPrice)}</div><div class="tiny">${formatProb(selected.fairPrice)}</div></div>
           <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName)}</a></div></div>
         </div>
         <div class="tiny" style="margin-top:10px;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'}</div>
@@ -658,8 +689,8 @@
       eventRows.innerHTML = tape.slice(0, 24).map(ev => `
         <div class="mini-row">
           <div>${formatTime(ev.time)}</div>
-          <div>${formatProb(ev.fair)}</div>
-          <div>${formatProb(ev.price)}</div>
+          <div>${formatOdds(ev.fair)} <span class="tiny">${formatProb(ev.fair)}</span></div>
+          <div>${formatOdds(ev.price)} <span class="tiny">${formatProb(ev.price)}</span></div>
           <div>${formatUsd(ev.size)}</div>
           <div class="hide-evt-md"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${ev.wallet}">${escapeHtml(ev.walletName || shortWallet(ev.wallet))}</a></div>
         </div>`).join('');
@@ -672,8 +703,8 @@
           <div class="hide-wallet-sm">${w.activity}</div>
         </div>`).join('');
 
-      document.getElementById('kpiOpening').textContent = formatProb(selected.openingPrice);
-      document.getElementById('kpiCurrent').textContent = formatProb(selected.currentPrice);
+      document.getElementById('kpiOpening').textContent = formatOdds(selected.openingPrice);
+      document.getElementById('kpiCurrent').textContent = formatOdds(selected.currentPrice);
       document.getElementById('kpiEdge').textContent = `${selected.fairEdge.toFixed(1)}%`;
       document.getElementById('kpiSpread').textContent = `${(selected.spread * 100).toFixed(2)}%`;
       document.getElementById('kpiFlow').textContent = formatUsd(selected.aggressiveFlowUsd);
@@ -729,7 +760,8 @@
             for (let i = 0; i < 22; i++) {
               const price = clamp(openingPrice + (Math.random() * 0.02 - 0.01), 0.01, 0.99);
               const fair = clamp(price + Math.min(0.02, m.spread * 0.5), 0.01, 0.99);
-              pushHistory(tokenId, { t: Date.now() - (22 - i) * 120000, price, fair });
+              const limit = Math.round(500 + Math.random() * 2500);
+              pushHistory(tokenId, { t: Date.now() - (22 - i) * 120000, price, fair, limit });
             }
             for (let i = 0; i < 8; i++) {
               const walletId = i % 2 === 0 ? m.primaryWallet : randomWallet(`${m.id}-${i}`);
@@ -807,7 +839,7 @@
                 walletObj.score = clamp(walletObj.score + (size >= 9000 ? 2 : 0), 1, 99);
                 if (size >= 9000) m.primaryWallet = wallet;
                 m.primaryWalletName = createWallet(m.primaryWallet).nickname;
-                pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+                pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice, limit: Math.round(size || 500) });
                 pushEvent(tokenId, {
                   time: Date.now(),
                   fair: m.fairPrice,
@@ -828,7 +860,7 @@
               m.lastTradePrice = m.currentPrice;
               m.updatedAt = Date.now();
               recomputeMarket(m);
-              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice, limit: 500 });
               pushEvent(tokenId, {
                 time: Date.now(),
                 fair: m.fairPrice,
@@ -853,7 +885,7 @@
               m.spread = Math.max(0.002, bestAsk - bestBid);
               m.updatedAt = Date.now();
               recomputeMarket(m);
-              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice });
+              pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice, limit: 500 });
               pushEvent(tokenId, {
                 time: Date.now(),
                 fair: m.fairPrice,
@@ -887,12 +919,40 @@
     document.getElementById('toggleControlsBtn').addEventListener('click', () => { state.controlsHidden = !state.controlsHidden; render(); });
     document.getElementById('muteBtn').addEventListener('click', () => { state.muted = !state.muted; render(); });
     document.getElementById('alertsBtn').addEventListener('click', () => alert('Alert configuration belongs in the backend build.'));
+    document.getElementById('openBetTrackerBtn')?.addEventListener('click', () => openBetTrackerModal());
+    document.getElementById('chartLegendControls')?.addEventListener('click', (e) => {
+      const el = e.target.closest('.toggle-line');
+      if (!el) return;
+      const key = el.dataset.line;
+      state.chartLines[key] = !state.chartLines[key];
+      renderDetail();
+    });
     document.getElementById('liveBtn').addEventListener('click', () => {
       state.liveMode = !state.liveMode;
       if (!state.liveMode && ws) ws.close();
       if (state.liveMode) openSocket();
       render();
     });
+
+    function openBetTrackerModal() {
+      const selected = getSelected();
+      if (!selected) return;
+      const marketType = selected.category || 'Market';
+      const message = `${selected.market} [Pre-market]
+
+${marketType}
+
+${selected.outcome}
+
+€
+N/A
+
+Select tags (optional)`;
+      const result = prompt(`Log market
+
+${message}`, '');
+      if (result !== null) alert('Market added to your tracker.');
+    }
 
     bootstrap();
   </script>
