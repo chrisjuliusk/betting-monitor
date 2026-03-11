@@ -1,465 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Betting Monitor</title>
+
+<style>
+
+body{
+margin:0;
+background:#06080d;
+color:#e8edff;
+font-family:Inter,Arial;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+padding:12px 18px;
+border-bottom:1px solid rgba(255,255,255,.08);
+background:#05070b;
+}
+
+.brand{
+font-weight:700;
+letter-spacing:.15em;
+text-transform:uppercase;
+font-size:13px;
+}
+
+.rows{
+height:calc(100vh - 100px);
+overflow:auto;
+}
+
+.row{
+display:grid;
+grid-template-columns:2fr .6fr .7fr .9fr .9fr .8fr .8fr .7fr .9fr;
+gap:10px;
+padding:10px 14px;
+border-bottom:1px solid rgba(255,255,255,.06);
+cursor:pointer;
+font-size:12px;
+}
+
+.row:hover{
+background:#101725;
+}
+
+.market-title{
+font-weight:700;
+font-size:13px;
+}
+
+.green{color:#39d98a}
+.red{color:#ff6f7f}
+.muted{color:rgba(255,255,255,.55)}
+
+.layout{
+display:grid;
+grid-template-columns:2fr 1fr;
+height:calc(100vh - 52px);
+}
+
+.sidebar{
+border-left:1px solid rgba(255,255,255,.08);
+padding:12px;
+}
+
+.chart{
+height:220px;
+border:1px solid rgba(255,255,255,.08);
+border-radius:6px;
+margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+
+<div class="brand">
+Betting Monitor
+</div>
+
+<div>
+<span id="status">Backend connected</span>
+<span id="count"></span>
+</div>
+
+</div>
+
+<div class="layout">
+
+<div>
+
+<div class="rows" id="rows"></div>
+
+</div>
+
+<div class="sidebar">
+
+<div id="detail"></div>
+
+<div class="chart" id="chart"></div>
+
+<div id="timeline"></div>
+
+</div>
+
+</div>
+
 <script>
-const API_BASE = 'https://betting-monitor-backend.onrender.com';
 
-const state = {
-  search: '',
-  category: 'all',
-  side: 'all',
-  sort: 'drop',
-  minDrop: 0,
-  minVolume: 0,
-  tab: 'all',
-  controlsHidden: false,
-  markets: [],
-  wallets: [],
-  selectedId: null,
-  timeline: [],
-  chartLines: { price: true, fair: true, open: true, limit: true },
-  lastSync: null,
-  error: '',
-  dropMode: 'window',
-  windowMinutes: 60
-};
+const API="https://betting-monitor-backend.onrender.com"
 
-const asNumber = (v, f = 0) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : f;
-};
+let markets=[]
+let timeline=[]
+let selected=null
 
-const formatUsd = v =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0
-  }).format(asNumber(v));
-
-const formatProb = v => `${(asNumber(v) * 100).toFixed(1)}%`;
-
-const formatOdds = v => {
-  const p = asNumber(v);
-  if (p <= 0 || p >= 1) return '—';
-  return (1 / p).toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
-};
-
-const formatAgo = ts => {
-  if (!ts) return '—';
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  return `${h}h ago`;
-};
-
-const formatTime = ts => {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, '0');
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} ${p(d.getDate())}/${p(d.getMonth() + 1)}`;
-};
-
-const shortWallet = w => w ? `${w.slice(0, 6)}...${w.slice(-4)}` : '';
-
-const escapeHtml = s =>
-  String(s ?? '').replace(/[&<>"']/g, m => ({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#39;'
-  }[m]));
-
-function getSelected() {
-  const list = filteredMarkets();
-  return list.find(x => x.id === state.selectedId) || list[0] || null;
+function odds(p){
+if(p<=0||p>=1)return "—"
+return (1/p).toFixed(3)
 }
 
-function currentDropValue(item) {
-  return state.dropMode === 'open'
-    ? asNumber(item.dropPctOpen, 0)
-    : asNumber(item.dropPctWindow, asNumber(item.dropPct, 0));
+function usd(v){
+return new Intl.NumberFormat('en-US',{
+style:'currency',
+currency:'USD',
+maximumFractionDigits:0
+}).format(v||0)
 }
 
-function filteredMarkets() {
-  let list = [...state.markets];
+async function loadMarkets(){
 
-  if (state.category !== 'all') list = list.filter(x => x.category === state.category);
-  if (state.side !== 'all') list = list.filter(x => x.outcome === state.side);
+const r=await fetch(API+"/api/markets")
+markets=await r.json()
 
-  if (state.search.trim()) {
-    const q = state.search.trim().toLowerCase();
-    list = list.filter(x =>
-      (x.market || '').toLowerCase().includes(q) ||
-      (x.category || '').toLowerCase().includes(q) ||
-      (x.primaryWalletName || '').toLowerCase().includes(q) ||
-      (x.primaryWallet || '').toLowerCase().includes(q) ||
-      (x.signal || '').toLowerCase().includes(q)
-    );
-  }
+document.getElementById("count").innerText=
+markets.length+" markets loaded"
 
-  list = list.filter(x => currentDropValue(x) >= state.minDrop && asNumber(x.volume24h, 0) >= state.minVolume);
+renderRows()
 
-  if (state.tab === 'fast') list = list.filter(x => currentDropValue(x) >= 3);
-  if (state.tab === 'whale') list = list.filter(x => x.signal === 'Whale flow');
-  if (state.tab === 'smart') list = list.filter(x => asNumber(x.smartWalletScore, 0) >= 70 || x.signal === 'Smart edge');
-  if (state.tab === 'pressure') list = list.filter(x => x.signal === 'Pressure' || x.signal === 'Fast move');
-
-  if (state.sort === 'drop') list.sort((a, b) => currentDropValue(b) - currentDropValue(a));
-  if (state.sort === 'recent') list.sort((a, b) => asNumber(b.updatedAt) - asNumber(a.updatedAt));
-  if (state.sort === 'flow') list.sort((a, b) => asNumber(b.aggressiveFlowUsd) - asNumber(a.aggressiveFlowUsd));
-  if (state.sort === 'wallet') list.sort((a, b) => asNumber(b.smartWalletScore) - asNumber(a.smartWalletScore));
-  if (state.sort === 'volume') list.sort((a, b) => asNumber(b.volume24h) - asNumber(a.volume24h));
-
-  return list;
 }
 
-async function loadMarkets() {
-  const params = new URLSearchParams({
-    window: String(state.windowMinutes),
-    mode: state.dropMode,
-    minDrop: String(state.minDrop),
-    sort: state.sort
-  });
+async function loadTimeline(id){
 
-  const r = await fetch(`${API_BASE}/api/markets?${params.toString()}`);
-  if (!r.ok) throw new Error('markets failed');
-  state.markets = await r.json();
-  if (!state.selectedId && state.markets[0]) state.selectedId = state.markets[0].id;
-  state.lastSync = Date.now();
+const r=await fetch(API+"/api/timeline/"+id)
+
+const data=await r.json()
+
+timeline=data.timeline||[]
+
+renderTimeline()
+
+renderChart()
+
 }
 
-async function loadWallets() {
-  const r = await fetch(`${API_BASE}/api/wallets`);
-  if (!r.ok) return;
-  state.wallets = await r.json();
+function renderRows(){
+
+const el=document.getElementById("rows")
+
+el.innerHTML=markets.map(m=>`
+
+<div class="row" onclick="selectMarket('${m.id}')">
+
+<div>
+<div class="market-title">${m.market}</div>
+<div class="muted">${m.category}</div>
+</div>
+
+<div>${m.outcome}</div>
+
+<div class="green">live</div>
+
+<div>${odds(m.previousPrice)} → ${odds(m.currentPrice)}</div>
+
+<div>${odds(m.fairPrice)}</div>
+
+<div>${m.dropPct.toFixed(2)}%</div>
+
+<div>${usd(m.aggressiveFlowUsd)}</div>
+
+<div>${m.smartWalletScore}</div>
+
+<div>${m.signal}</div>
+
+</div>
+
+`).join("")
+
 }
 
-async function loadTimeline() {
-  const selected = getSelected();
-  if (!selected || !selected.conditionId) {
-    state.timeline = [];
-    return;
-  }
-  const r = await fetch(`${API_BASE}/api/timeline/${encodeURIComponent(selected.conditionId)}`);
-  if (!r.ok) {
-    state.timeline = [];
-    return;
-  }
-  const data = await r.json();
-  state.timeline = data.timeline || [];
-  if (data.topWallet && selected) {
-    selected.primaryWallet = data.topWallet;
-  }
+async function selectMarket(id){
+
+selected=markets.find(x=>x.id===id)
+
+renderDetail()
+
+await loadTimeline(selected.conditionId)
+
 }
 
-function ensureExtraControls() {
-  if (!document.getElementById('dropModeSelect')) {
-    const filters = document.querySelector('.filters');
-    filters.insertAdjacentHTML('beforeend', `
-      <select id="dropModeSelect" class="field">
-        <option value="window">Drop: Window</option>
-        <option value="open">Drop: Opening</option>
-      </select>
-      <select id="windowSelect" class="field">
-        <option value="1">1 min</option>
-        <option value="3">3 min</option>
-        <option value="5">5 min</option>
-        <option value="15">15 min</option>
-        <option value="30">30 min</option>
-        <option value="60" selected>60 min</option>
-        <option value="240">240 min</option>
-      </select>
-    `);
+function renderDetail(){
 
-    document.getElementById('dropModeSelect').addEventListener('change', async e => {
-      state.dropMode = e.target.value;
-      await init();
-    });
+const d=document.getElementById("detail")
 
-    document.getElementById('windowSelect').addEventListener('change', async e => {
-      state.windowMinutes = asNumber(e.target.value, 60);
-      await init();
-    });
-  }
-
-  document.getElementById('dropModeSelect').value = state.dropMode;
-  document.getElementById('windowSelect').value = String(state.windowMinutes);
+if(!selected){
+d.innerHTML=""
+return
 }
 
-function renderControls() {
-  ensureExtraControls();
+d.innerHTML=`
 
-  document.getElementById('controlsArea').style.display = state.controlsHidden ? 'none' : 'block';
-  document.getElementById('toggleControlsBtn').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls';
-  document.getElementById('sourceLabel').textContent = `Backend markets + backend timelines · Drop mode: ${state.dropMode} · Window: ${state.windowMinutes}m`;
-  document.getElementById('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
-  document.getElementById('eventCounter').textContent = `${state.markets.length} markets loaded`;
-  document.getElementById('streamStatus').textContent = 'Backend connected';
-  document.getElementById('searchInput').value = state.search;
+<h3>${selected.market}</h3>
 
-  const cats = ['all', ...Array.from(new Set(state.markets.map(x => x.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  document.getElementById('categorySelect').innerHTML = cats.map(c =>
-    `<option value="${escapeHtml(c)}">${c === 'all' ? 'All categories' : escapeHtml(c)}</option>`
-  ).join('');
-  document.getElementById('categorySelect').value = state.category;
-  document.getElementById('sideSelect').value = state.side;
-  document.getElementById('sortSelect').value = state.sort;
-  document.getElementById('minDropSelect').value = String(state.minDrop);
-  document.getElementById('volumeSelect').value = String(state.minVolume);
+<div>Opening: ${odds(selected.openingPrice)}</div>
 
-  const list = filteredMarkets();
-  const whales = list.filter(x => x.signal === 'Whale flow').length;
-  const smart = list.filter(x => asNumber(x.smartWalletScore, 0) >= 70).length;
-  const fairPlus = list.filter(x => asNumber(x.fairEdge, 0) > 0).length;
+<div>Current: ${odds(selected.currentPrice)}</div>
 
-  document.getElementById('dropStats').textContent =
-    `Drops: ${list.length} · Whale: ${whales} · Smart: ${smart} · Mode: ${state.dropMode === 'open' ? 'Opening' : `${state.windowMinutes}m`}`;
-  document.getElementById('marketStats').textContent = `Markets: ${state.markets.length} · Fair edge+: ${fairPlus}`;
-  document.getElementById('errorArea').innerHTML = state.error ? `<div class="notice">${escapeHtml(state.error)}</div>` : '';
+<div>Fair: ${odds(selected.fairPrice)}</div>
+
+<div>Wallet: ${selected.primaryWallet||"pending"}</div>
+
+`
+
 }
 
-function renderRows() {
-  const rowsEl = document.getElementById('rows');
-  const list = filteredMarkets();
-  const selected = getSelected();
+function renderTimeline(){
 
-  if (selected) state.selectedId = selected.id;
+const el=document.getElementById("timeline")
 
-  if (!list.length) {
-    rowsEl.innerHTML = '<div class="row"><div>No matching markets.</div><div></div><div></div><div></div><div class="hide-sm"></div><div class="hide-md"></div><div class="hide-md"></div><div class="hide-sm"></div><div class="hide-sm"></div></div>';
-    return;
-  }
-
-  rowsEl.innerHTML = list.map(item => {
-    const badgeClass =
-      item.signal === 'Whale flow' ? 'whale' :
-      item.signal === 'Fast move' ? 'fast' :
-      item.signal === 'Pressure' ? 'pressure' :
-      item.signal === 'Smart edge' ? 'smart' : '';
-
-    const dropVal = currentDropValue(item);
-
-    return `
-      <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
-        <div>
-          <div class="market-title">${escapeHtml(item.market)}</div>
-          <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · ${escapeHtml(item.primaryWalletName || (item.primaryWallet ? shortWallet(item.primaryWallet) : 'trace pending'))}</div>
-        </div>
-        <div>${escapeHtml(item.outcome || '')}</div>
-        <div class="green">${formatAgo(item.updatedAt)}</div>
-        <div>${formatOdds(item.previousPrice)} <span class="red">→ ${formatOdds(item.currentPrice)}</span><div class="tiny">${formatProb(item.currentPrice)}</div></div>
-        <div class="hide-sm ${asNumber(item.fairEdge, 0) >= 0 ? 'green' : 'red'}">${formatOdds(item.fairPrice)}<div class="tiny">${formatProb(item.fairPrice)}</div></div>
-        <div class="hide-md ${dropVal >= 3 ? 'red' : dropVal > 0 ? 'yellow' : 'muted'}">${dropVal.toFixed(2)}%</div>
-        <div class="hide-md">${formatUsd(item.aggressiveFlowUsd)}</div>
-        <div class="hide-sm ${asNumber(item.smartWalletScore, 0) >= 75 ? 'green' : asNumber(item.smartWalletScore, 0) >= 55 ? 'yellow' : 'muted'}">${item.smartWalletScore ?? '—'}</div>
-        <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal || '')}</span></div>
-      </div>
-    `;
-  }).join('');
-
-  rowsEl.querySelectorAll('.row[data-id]').forEach(el => {
-    el.onclick = async () => {
-      state.selectedId = el.dataset.id;
-      await loadTimeline();
-      await loadWallets();
-      render();
-    };
-  });
+if(!timeline.length){
+el.innerHTML="loading timeline..."
+return
 }
 
-function renderChart() {
-  const box = document.getElementById('chartBox');
-  const selected = getSelected();
+el.innerHTML=timeline.map(t=>`
 
-  const chartData = (selected?.chart || []).map((p, i) => ({
-    price: asNumber(p.price, selected?.currentPrice),
-    fair: asNumber(selected?.fairPrice, 0),
-    limit: 0,
-    idx: i
-  }));
+<div>
 
-  if (!selected || !chartData.length) {
-    box.innerHTML = '<div class="tiny" style="padding:12px;">Waiting for chart history...</div>';
-    return;
-  }
+${new Date(t.time).toLocaleTimeString()}
+${odds(t.price)}
+${usd(t.size)}
 
-  const pts = chartData;
-  const w = 460, h = 230, padX = 16, padY = 18;
-  const vals = [];
-  pts.forEach(p => vals.push(p.price, p.fair));
-  vals.push(asNumber(selected.openingPrice, selected.currentPrice));
+</div>
 
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = Math.max(.001, max - min);
+`).join("")
 
-  const toPts = k => pts.map((p, i) => {
-    const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
-    const y = h - padY - ((p[k] - min) / range) * (h - padY * 2);
-    return `${x},${y}`;
-  }).join(' ');
-
-  const openingY = h - padY - ((asNumber(selected.openingPrice, selected.currentPrice) - min) / range) * (h - padY * 2);
-
-  box.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      ${state.chartLines.open ? `<line x1="${padX}" y1="${openingY}" x2="${w-padX}" y2="${openingY}" stroke="rgba(57,217,138,0.8)" stroke-width="1.5" stroke-dasharray="4 4" />` : ''}
-      ${state.chartLines.fair ? `<polyline fill="none" stroke="rgba(255,255,255,0.96)" stroke-width="2.2" points="${toPts('fair')}" />` : ''}
-      ${state.chartLines.price ? `<polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${toPts('price')}" />` : ''}
-    </svg>
-  `;
 }
 
-function renderDetail() {
-  const selected = getSelected();
-  const detail = document.getElementById('detailPane');
-  const eventRows = document.getElementById('eventRows');
-  const walletRows = document.getElementById('walletRows');
+function renderChart(){
 
-  if (!selected) {
-    detail.innerHTML = '<div class="tiny">Select a market from the feed.</div>';
-    eventRows.innerHTML = '';
-    walletRows.innerHTML = '';
-    return;
-  }
+const el=document.getElementById("chart")
 
-  const liveDrop = currentDropValue(selected);
-
-  detail.innerHTML = `
-    <div class="detail-title">${escapeHtml(selected.market)}</div>
-    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-      <span class="badge">${escapeHtml(selected.category || '')}</span>
-      <span class="badge">${escapeHtml(selected.outcome || '')}</span>
-      <span class="badge ${
-        selected.signal === 'Whale flow' ? 'whale' :
-        selected.signal === 'Fast move' ? 'fast' :
-        selected.signal === 'Pressure' ? 'pressure' :
-        selected.signal === 'Smart edge' ? 'smart' : ''
-      }">${escapeHtml(selected.signal || '')}</span>
-      <span class="badge">${state.dropMode === 'open' ? 'Opening drop' : `${state.windowMinutes}m drop`}: ${liveDrop.toFixed(2)}%</span>
-    </div>
-    <div class="detail-grid" style="margin-top:10px;">
-      <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatOdds(selected.openingPrice)}</div><div class="tiny">${formatProb(selected.openingPrice)}</div></div>
-      <div class="detail-box"><div class="k">Current price</div><div class="v">${formatOdds(selected.currentPrice)}</div><div class="tiny">${formatProb(selected.currentPrice)}</div></div>
-      <div class="detail-box"><div class="k">Fair price</div><div class="v">${formatOdds(selected.fairPrice)}</div><div class="tiny">${formatProb(selected.fairPrice)}</div></div>
-      <div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;">${
-        selected.primaryWallet
-          ? `<a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${selected.primaryWallet}">${escapeHtml(selected.primaryWalletName || shortWallet(selected.primaryWallet))}</a>`
-          : '<span class="tiny">Waiting for trade trace...</span>'
-      }</div><div class="tiny">${escapeHtml(selected.primaryWallet || '')}</div></div>
-    </div>
-  `;
-
-  renderChart();
-
-  eventRows.innerHTML = state.timeline.length
-    ? state.timeline.map(ev => `
-        <div class="mini-row">
-          <div>${formatTime(ev.time)}</div>
-          <div>${formatOdds(ev.fair)} <span class="tiny">${formatProb(ev.fair)}</span></div>
-          <div>${formatOdds(ev.price)} <span class="tiny">${formatProb(ev.price)}</span></div>
-          <div>${formatUsd(ev.size)}</div>
-          <div class="hide-evt-md">${
-            ev.wallet
-              ? `<a class="link-wallet" target="_blank" rel="noreferrer" href="${ev.profileUrl || '#'}">${escapeHtml(ev.walletLabel || shortWallet(ev.wallet))}</a><div class="tiny">${escapeHtml(ev.wallet)}</div>`
-              : '<span class="tiny">No wallet</span>'
-          }</div>
-        </div>
-      `).join('')
-    : '<div class="mini-row"><div class="tiny">Loading trade trace…</div><div></div><div></div><div></div><div class="hide-evt-md"></div></div>';
-
-  walletRows.innerHTML = state.wallets.length
-    ? state.wallets.slice(0, 30).map(w => `
-        <div class="mini-row">
-          <div><a class="link-wallet" target="_blank" rel="noreferrer" href="${w.profileUrl}">${escapeHtml(w.nickname || shortWallet(w.wallet))}</a><div class="tiny">${escapeHtml(w.wallet)}</div></div>
-          <div>${w.score ?? '—'}</div>
-          <div class="${asNumber(w.pnlEdge, 0) >= 0 ? 'green' : 'red'}">${asNumber(w.pnlEdge, 0).toFixed(1)}%</div>
-          <div class="hide-wallet-sm">${w.activity ?? 0}</div>
-        </div>
-      `).join('')
-    : '<div class="mini-row"><div class="tiny">Wallet trace data will appear after timeline loads.</div><div></div><div></div><div class="hide-wallet-sm"></div></div>';
-
-  document.getElementById('kpiOpening').textContent = formatOdds(selected.openingPrice);
-  document.getElementById('kpiCurrent').textContent = formatOdds(selected.currentPrice);
-  document.getElementById('kpiEdge').textContent = `${asNumber(selected.fairEdge, 0).toFixed(1)}%`;
-  document.getElementById('kpiSpread').textContent = `${(asNumber(selected.spread, 0) * 100).toFixed(2)}%`;
-  document.getElementById('kpiFlow').textContent = formatUsd(selected.aggressiveFlowUsd);
-  document.getElementById('kpiWallet').textContent = selected.smartWalletScore ?? '—';
+if(!timeline.length){
+el.innerHTML=""
+return
 }
 
-function render() {
-  renderControls();
-  renderRows();
-  renderDetail();
+const w=400
+const h=220
+
+const prices=timeline.map(t=>t.price)
+
+const min=Math.min(...prices)
+const max=Math.max(...prices)
+
+const range=max-min||.001
+
+const pts=timeline.map((t,i)=>{
+
+const x=i/(timeline.length-1)*w
+const y=h-(t.price-min)/range*h
+
+return x+","+y
+
+}).join(" ")
+
+el.innerHTML=`<svg viewBox="0 0 ${w} ${h}">
+<polyline
+fill="none"
+stroke="#62a9ff"
+stroke-width="2"
+points="${pts}"
+/>
+</svg>`
+
 }
 
-async function init() {
-  try {
-    state.error = '';
-    await loadMarkets();
-    await loadTimeline();
-    await loadWallets();
-    render();
-  } catch (e) {
-    state.error = 'Backend not connected or backend returned no data.';
-    render();
-  }
-}
+loadMarkets()
 
-document.getElementById('searchInput').addEventListener('input', e => {
-  state.search = e.target.value;
-  render();
-});
-
-document.getElementById('categorySelect').addEventListener('change', e => {
-  state.category = e.target.value;
-  render();
-});
-
-document.getElementById('sideSelect').addEventListener('change', e => {
-  state.side = e.target.value;
-  render();
-});
-
-document.getElementById('sortSelect').addEventListener('change', async e => {
-  state.sort = e.target.value;
-  await init();
-});
-
-document.getElementById('minDropSelect').addEventListener('change', async e => {
-  state.minDrop = asNumber(e.target.value, 0);
-  await init();
-});
-
-document.getElementById('volumeSelect').addEventListener('change', e => {
-  state.minVolume = asNumber(e.target.value, 0);
-  render();
-});
-
-document.querySelectorAll('.tab').forEach(el => el.addEventListener('click', () => {
-  state.tab = el.dataset.tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  render();
-}));
-
-document.getElementById('toggleControlsBtn').addEventListener('click', () => {
-  state.controlsHidden = !state.controlsHidden;
-  render();
-});
-
-document.getElementById('refreshBtn').addEventListener('click', async () => {
-  await init();
-});
-
-document.getElementById('chartLegendControls').addEventListener('click', e => {
-  const el = e.target.closest('.toggle-line');
-  if (!el) return;
-  const key = el.dataset.line;
-  state.chartLines[key] = !state.chartLines[key];
-  el.classList.toggle('active', state.chartLines[key]);
-  renderChart();
-});
-
-init();
-setInterval(init, 30000);
 </script>
+
+</body>
+</html>
