@@ -1,5 +1,1 @@
 
-}
-
-loadFeed();
-setInterval(loadFeed, 30000);
