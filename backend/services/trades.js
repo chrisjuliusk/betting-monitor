@@ -1,60 +1,50 @@
 import { state, upsertWallet } from "./state.js";
-import { enrichWallet } from "./profiles.js";
+import { walletNickname, walletProfileUrl } from "./profiles.js";
 
-export async function loadTimeline(conditionId) {
-  if (!conditionId) {
-    return { timeline: [], topWallet: "" };
+function asNumber(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export async function getTimelineForCondition(conditionId) {
+  const market = Array.from(state.markets.values()).find(
+    x => x.conditionId === conditionId
+  );
+
+  if (!market) {
+    return {
+      timeline: [],
+      topWallet: "",
+      topWalletName: ""
+    };
   }
 
-  const url = `https://data-api.polymarket.com/trades?market=${encodeURIComponent(conditionId)}`;
-  const response = await fetch(url);
+  const chart = Array.isArray(market.chart) ? market.chart : [];
+  const timeline = chart.slice(-50).map(point => ({
+    time: point.ts,
+    fair: market.fairPrice,
+    price: point.price,
+    size: 0,
+    wallet: "",
+    walletLabel: "",
+    profileUrl: ""
+  }));
 
-  if (!response.ok) {
-    throw new Error(`Trades failed with ${response.status}`);
-  }
+  return {
+    timeline,
+    topWallet: market.primaryWallet || "",
+    topWalletName: market.primaryWalletName || ""
+  };
+}
 
-  const rows = await response.json();
+export function registerWalletActivity(wallet, patch = {}) {
+  if (!wallet) return null;
 
-  const market = [...state.markets.values()].find((m) => m.conditionId === conditionId);
-  const fair = market?.fairPrice ?? 0.5;
-
-  const timeline = [];
-  const walletTotals = new Map();
-
-  for (const t of rows.slice(0, 100)) {
-    const wallet = t.proxyWallet || t.wallet || "";
-    const price = Number(t.price || 0);
-    const size = Number(t.size || 0);
-    const sizeUsd = size * Math.max(price, 1);
-
-    if (wallet) {
-      const current = state.wallets.get(wallet);
-      upsertWallet(wallet, {
-        activity: (current?.activity || 0) + 1,
-        score: (current?.score || 50) + 1
-      });
-      await enrichWallet(wallet);
-      walletTotals.set(wallet, (walletTotals.get(wallet) || 0) + sizeUsd);
-    }
-
-    timeline.push({
-      time: Number(t.timestamp || Date.now()),
-      fair,
-      price,
-      size: sizeUsd,
-      wallet
-    });
-  }
-
-  timeline.sort((a, b) => b.time - a.time);
-
-  const topWalletEntry = [...walletTotals.entries()].sort((a, b) => b[1] - a[1])[0];
-  const topWallet = topWalletEntry ? topWalletEntry[0] : "";
-
-  if (market && topWallet) {
-    market.primaryWallet = topWallet;
-    market.primaryWalletName = `${topWallet.slice(0, 6)}...${topWallet.slice(-4)}`;
-  }
-
-  return { timeline, topWallet };
+  return upsertWallet(wallet, {
+    nickname: patch.nickname || walletNickname(wallet),
+    profileUrl: patch.profileUrl || walletProfileUrl(wallet),
+    activity: asNumber(patch.activity, 0),
+    score: asNumber(patch.score, 50),
+    pnlEdge: asNumber(patch.pnlEdge, 0)
+  });
 }
