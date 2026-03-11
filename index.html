@@ -312,7 +312,6 @@
           </div>
 
           <div class="side-card">
-            <div class="side-card">
             <div class="side-title">Bet tracker</div>
             <div id="betTrackerPanel">
               <button class="btn primary" id="openBetTrackerBtn">Log market</button>
@@ -560,8 +559,8 @@
       const spread = asNumber(data.spread, Math.max(0.004, Math.min(0.06, currentPrice * 0.035)));
       const fairPrice = clamp(currentPrice + Math.min(0.02, spread * 0.55), 0.01, 0.99);
       const aggressiveFlowUsd = asNumber(data.aggressiveFlowUsd, 0);
-      const wallet = data.primaryWallet || randomWallet(`${data.id}-${data.market}`);
-      const walletObj = createWallet(wallet);
+      const wallet = data.primaryWallet || '';
+      const walletObj = wallet ? createWallet(wallet) : null;
       const market = {
         id: data.id,
         tokenId: data.tokenId,
@@ -576,9 +575,9 @@
         spread,
         volume24h: asNumber(data.volume24h, 0),
         aggressiveFlowUsd,
-        smartWalletScore: clamp(walletObj.score + Math.round(aggressiveFlowUsd / 20000), 1, 99),
+        smartWalletScore: clamp((walletObj ? walletObj.score : 50) + Math.round(aggressiveFlowUsd / 20000), 1, 99),
         primaryWallet: wallet,
-        primaryWalletName: walletObj.nickname,
+        primaryWalletName: walletObj ? walletObj.nickname : '',
         walletActivity: 1,
         updatedAt: data.updatedAt || Date.now(),
         slug: data.slug || '',
@@ -754,7 +753,7 @@
           <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
             <div>
               <div class="market-title">${escapeHtml(item.market)}</div>
-              <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · ${escapeHtml(item.primaryWalletName)}</div>
+              <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · ${escapeHtml(item.primaryWalletName || (item.primaryWallet ? shortWallet(item.primaryWallet) : 'trace pending'))}</div>
             </div>
             <div>${escapeHtml(item.outcome)}</div>
             <div class="green">${formatAgo(item.updatedAt)}</div>
@@ -845,14 +844,18 @@
       renderChart(selected);
 
       const tape = eventTapes.get(selected.tokenId) || [];
-      eventRows.innerHTML = tape.slice(0, 24).map(ev => `
+      eventRows.innerHTML = tape.slice(0, 24).map(ev => {
+        const walletHref = ev.wallet ? `https://polymarket.com/profile/${ev.wallet}` : '#';
+        const walletLabel = ev.walletName || shortWallet(ev.wallet || '');
+        return `
         <div class="mini-row">
           <div>${formatTime(ev.time)}</div>
           <div>${formatOdds(ev.fair)} <span class="tiny">${formatProb(ev.fair)}</span></div>
           <div>${formatOdds(ev.price)} <span class="tiny">${formatProb(ev.price)}</span></div>
           <div>${formatUsd(ev.size)}</div>
-          <div class="hide-evt-md"><a class="link-wallet" target="_blank" rel="noreferrer" href="https://polymarket.com/profile/${ev.wallet}">${escapeHtml(ev.walletName || shortWallet(ev.wallet))}</a><div class="tiny">${escapeHtml(ev.wallet || '')}</div></div>
-        </div>`).join('');
+          <div class="hide-evt-md">${ev.wallet ? `<a class="link-wallet" target="_blank" rel="noreferrer" href="${walletHref}">${escapeHtml(walletLabel)}</a><div class="tiny">${escapeHtml(ev.wallet)}</div>` : '<span class="tiny">No wallet</span>'}</div>
+        </div>`;
+      }).join('');
 
       walletRows.innerHTML = state.walletRankings.slice(0, 8).map(w => `
         <div class="mini-row">
@@ -1016,13 +1019,14 @@
                 if (size >= 9000) m.whaleCount += 1;
                 m.updatedAt = Date.now();
                 recomputeMarket(m);
-                const wallet = size >= 9000 ? m.primaryWallet : randomWallet(`${m.id}-${Date.now()}-${size}`);
-                const walletObj = createWallet(wallet);
-                walletObj.activity += 1;
-                walletObj.lastSeen = Date.now();
-                walletObj.score = clamp(walletObj.score + (size >= 9000 ? 2 : 0), 1, 99);
-                if (size >= 9000) m.primaryWallet = wallet;
-                m.primaryWalletName = createWallet(m.primaryWallet).nickname;
+                const wallet = m.primaryWallet || '';
+                if (wallet) {
+                  const walletObj = createWallet(wallet);
+                  walletObj.activity += 1;
+                  walletObj.lastSeen = Date.now();
+                  walletObj.score = clamp(walletObj.score + (size >= 9000 ? 2 : 0), 1, 99);
+                  m.primaryWalletName = walletObj.nickname;
+                }
                 pushHistory(tokenId, { t: Date.now(), price: m.currentPrice, fair: m.fairPrice, limit: Math.round(size || 500) });
                 pushEvent(tokenId, {
                   time: Date.now(),
@@ -1030,7 +1034,7 @@
                   price: m.currentPrice,
                   size: Math.round(size || 500),
                   wallet,
-                  walletName: walletObj.nickname
+                  walletName: wallet ? createWallet(wallet).nickname : ''
                 });
               }
             }
@@ -1050,8 +1054,8 @@
                 fair: m.fairPrice,
                 price: m.currentPrice,
                 size: 500,
-                wallet: m.primaryWallet,
-                walletName: m.primaryWalletName
+                wallet: m.primaryWallet || '',
+                walletName: m.primaryWalletName || ''
               });
             }
 
