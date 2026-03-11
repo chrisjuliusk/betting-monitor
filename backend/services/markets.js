@@ -1,110 +1,135 @@
 import { state } from "./state.js";
 
-function parseMaybeJsonArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string") return [];
-  try {
-    return JSON.parse(value);
-  } catch {
-    return [];
-  }
+const GAMMA_URL = "https://gamma-api.polymarket.com/markets?limit=200&closed=false";
+
+function asNumber(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function pickOutcome(outcomes) {
-  const arr = parseMaybeJsonArray(outcomes);
-  return arr[0] ? String(arr[0]).toUpperCase() : "YES";
+function pickOutcomeToken(market) {
+  const tokens = Array.isArray(market.tokens) ? market.tokens : [];
+  if (!tokens.length) return null;
+
+  const yes =
+    tokens.find(t => String(t.outcome).toUpperCase() === "YES") ||
+    tokens[0];
+
+  return yes;
 }
 
-function pickCurrentPrice(market) {
-  const prices = parseMaybeJsonArray(market.outcomePrices);
+function buildMarket(raw) {
+  const token = pickOutcomeToken(raw);
+  if (!token) return null;
 
-  if (prices.length) {
-    const p = Number(prices[0]);
-    if (Number.isFinite(p) && p > 0 && p < 1) return p;
-  }
-
-  const fallback =
-    Number(market.lastTradePrice) ||
-    Number(market.bestBid) ||
-    Number(market.bestAsk) ||
-    0.5;
-
-  if (Number.isFinite(fallback) && fallback > 0 && fallback < 1) {
-    return fallback;
-  }
-
-  return 0.5;
-}
-
-function toMarketRow(market) {
-
-  const currentPrice = pickCurrentPrice(market);
-  const openingPrice = currentPrice;
-
-  const fairPrice = Math.min(
-    0.99,
-    Math.max(0.01, currentPrice + 0.01)
+  const currentPrice = asNumber(
+    token.price ?? token.lastPrice ?? raw.lastPrice ?? raw.bestAsk ?? 0
   );
 
-  const spread = 0.02;
+  const previousPrice = currentPrice;
+  const openingPrice = currentPrice;
+  const fairPrice = Math.min(0.99, currentPrice + 0.01);
+
+  const id = String(raw.id ?? token.token_id ?? raw.conditionId ?? Math.random());
+  const marketName = raw.question || raw.title || raw.slug || "Unknown market";
+  const category = raw.category || raw.groupItemTitle || "Other";
+  const outcome = String(token.outcome || "YES").toUpperCase();
+  const conditionId = raw.conditionId || raw.condition_id || raw.clobTokenIds?.[0] || "";
+  const slug = raw.slug || "";
 
   return {
-    id: String(market.id),
-    market: market.question || market.groupItemTitle || "Untitled market",
-    category: market.category || "Other",
-    outcome: pickOutcome(market.outcomes),
-
+    id,
+    market: marketName,
+    category,
+    outcome,
     currentPrice,
-    previousPrice: currentPrice,
+    previousPrice,
     openingPrice,
-
     fairPrice,
-    fairEdge: (fairPrice - currentPrice) * 100,
-
     dropPct: 0,
-
+    dropPctOpen: 0,
+    dropPctWindow: 0,
+    dropWindowMinutes: 60,
+    fairEdge: 1,
     aggressiveFlowUsd: 0,
     smartWalletScore: 50,
-
     primaryWallet: "",
     primaryWalletName: "",
-
     signal: "Watching",
-
-    spread,
-    volume24h: Number(market.volume24hr || 0),
-
+    spread: 0.02,
+    volume24h: asNumber(raw.volume24hr ?? raw.volume24h ?? raw.volume ?? 0),
     updatedAt: Date.now(),
-
-    conditionId: market.conditionId || "",
-    slug: market.slug || ""
+    conditionId,
+    slug,
+    chart: [{ ts: Date.now(), price: currentPrice }]
   };
 }
 
-export async function loadMarkets() {
+function updateExisting(prev, nextRaw) {
+  const nextPrice = asNumber(nextRaw.currentPrice, prev.currentPrice);
+  const prevPrice = asNumber(prev.currentPrice, nextPrice);
+  const opening = asNumber(prev.openingPrice, nextPrice);
 
-  const response = await fetch(
-    "https://gamma-api.polymarket.com/markets"
-  );
+  const chart = Array.isArray(prev.chart) ? [...prev.chart] : [];
+  const lastPoint = chart[chart.length - 1];
 
-  if (!response.ok) {
-    throw new Error(`Gamma markets failed ${response.status}`);
+  if (!lastPoint || Math.abs(asNumber(lastPoint.price) - nextPrice) > 0.000001) {
+    chart.push({ ts: Date.now(), price: nextPrice });
   }
 
-  const data = await response.json();
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const recent = chart.filter(p => now - asNumber(p.ts) <= windowMs);
+  const windowOpen = recent.length ? asNumber(recent[0].price, nextPrice) : nextPrice;
 
-  state.markets.clear();
+  const dropPct = prevPrice > nextPrice ? ((prevPrice - nextPrice) / prevPrice) * 100 : 0;
+  const dropPctOpen = opening > nextPrice ? ((opening - nextPrice) / opening) * 100 : 0;
+  const dropPctWindow = windowOpen > nextPrice ? ((windowOpen - nextPrice) / windowOpen) * 100 : 0;
 
-  for (const market of data) {
+  let signal = "Watching";
+  if (dropPctWindow >= 5) signal = "Fast move";
+  else if (dropPctWindow >= 3) signal = "Pressure";
 
-    if (market.closed || market.archived || market.active === false) continue;
+  return {
+    ...prev,
+    ...nextRaw,
+    previousPrice: prevPrice,
+    openingPrice: opening,
+    updatedAt: now,
+    dropPct,
+    dropPctOpen,
+    dropPctWindow,
+    dropWindowMinutes: 60,
+    signal,
+    chart: chart.slice(-300)
+  };
+}
 
-    const row = toMarketRow(market);
+export async function refreshMarkets() {
+  const res = await fetch(GAMMA_URL, {
+    headers: {
+      "accept": "application/json"
+    }
+  });
 
-    state.markets.set(row.id, row);
+  if (!res.ok) {
+    throw new Error(`Gamma markets failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : [];
+
+  for (const raw of list) {
+    const next = buildMarket(raw);
+    if (!next || !next.id) continue;
+
+    const prev = state.markets.get(next.id);
+    if (!prev) {
+      state.markets.set(next.id, next);
+    } else {
+      state.markets.set(next.id, updateExisting(prev, next));
+    }
   }
 
   state.lastSync = Date.now();
-
-  return [...state.markets.values()];
 }
