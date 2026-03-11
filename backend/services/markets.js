@@ -35,23 +35,86 @@ function pickCurrentPrice(market) {
   return 0.5;
 }
 
-function toMarketRow(market) {
-  const currentPrice = pickCurrentPrice(market);
-  const openingPrice = currentPrice;
+function pctDrop(referencePrice, currentPrice) {
+  if (!Number.isFinite(referencePrice) || referencePrice <= 0) return 0;
+  if (!Number.isFinite(currentPrice) || currentPrice < 0) return 0;
+  return Math.max(0, ((referencePrice - currentPrice) / referencePrice) * 100);
+}
+
+function trimHistory(history, now) {
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  return history.filter((point) => point.ts >= cutoff).slice(-2000);
+}
+
+function updateHistory(id, price, now) {
+  const existing = state.priceHistory.get(id) || [];
+  const last = existing[existing.length - 1];
+
+  if (!last || Math.abs(last.price - price) > 0.000001 || now - last.ts >= 15000) {
+    existing.push({ ts: now, price });
+  }
+
+  const trimmed = trimHistory(existing, now);
+  state.priceHistory.set(id, trimmed);
+  return trimmed;
+}
+
+function getWindowPeak(history, now, windowMinutes) {
+  const fromTs = now - windowMinutes * 60 * 1000;
+  let peak = 0;
+
+  for (const point of history) {
+    if (point.ts >= fromTs && point.price > peak) {
+      peak = point.price;
+    }
+  }
+
+  if (peak > 0) return peak;
+  if (history.length) return history[history.length - 1].price;
+  return 0;
+}
+
+function buildChart(history, now, windowMinutes) {
+  const fromTs = now - windowMinutes * 60 * 1000;
+  return history
+    .filter((point) => point.ts >= fromTs)
+    .map((point) => ({
+      ts: point.ts,
+      price: point.price
+    }));
+}
+
+function toMarketRow({
+  market,
+  currentPrice,
+  previousPrice,
+  openingPrice,
+  dropPctOpen,
+  dropPctWindow,
+  chart,
+  windowMinutes,
+  now
+}) {
   const spread = 0.02;
   const fairPrice = Math.min(0.99, Math.max(0.01, currentPrice + 0.01));
 
   return {
-    id: String(market.id || market.conditionId || market.slug || crypto.randomUUID()),
-    market: market.question || market.groupItemTitle || market.slug || "Untitled market",
+    id: String(market.id),
+    market: market.question || market.groupItemTitle || "Untitled market",
     category: market.category || "Other",
     outcome: pickOutcome(market.outcomes),
+
     currentPrice,
-    previousPrice: currentPrice,
+    previousPrice,
     openingPrice,
     fairPrice,
+
+    dropPct: dropPctWindow,
+    dropPctOpen,
+    dropPctWindow,
+    dropWindowMinutes: windowMinutes,
+
     fairEdge: (fairPrice - currentPrice) * 100,
-    dropPct: 0,
     aggressiveFlowUsd: 0,
     smartWalletScore: 50,
     primaryWallet: "",
@@ -59,32 +122,31 @@ function toMarketRow(market) {
     signal: "Watching",
     spread,
     volume24h: Number(market.volume24hr || market.volume || 0),
-    updatedAt: Date.now(),
+    updatedAt: now,
     conditionId: market.conditionId || "",
-    slug: market.slug || ""
+    slug: market.slug || "",
+    chart
   };
 }
 
-export async function loadMarkets() {
-  console.log("loadMarkets start");
+export async function loadMarkets(options = {}) {
+  const now = Date.now();
+  const windowMinutes = Math.max(1, Number(options.windowMinutes || 60));
 
-  const url =
-    "https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=200";
-
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/json"
+  const response = await fetch(
+    "https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=200",
+    {
+      headers: {
+        accept: "application/json"
+      }
     }
-  });
-
-  console.log("gamma status:", response.status);
+  );
 
   if (!response.ok) {
     throw new Error(`Gamma markets failed with ${response.status}`);
   }
 
   const data = await response.json();
-
   const rows = Array.isArray(data)
     ? data
     : Array.isArray(data?.data)
@@ -93,29 +155,60 @@ export async function loadMarkets() {
     ? data.markets
     : [];
 
-  console.log("gamma rows:", rows.length);
-
   if (!rows.length) {
-    console.log("gamma returned empty rows, keeping previous cache:", state.markets.size);
     return [...state.markets.values()];
   }
 
   const nextMarkets = new Map();
 
   for (const market of rows) {
-    const row = toMarketRow(market);
-    nextMarkets.set(row.id, row);
+    if (market.closed || market.archived || market.active === false) continue;
+
+    const id = String(market.id);
+    const currentPrice = pickCurrentPrice(market);
+
+    const existing = state.markets.get(id);
+    const previousPrice = existing?.currentPrice ?? currentPrice;
+
+    if (!state.marketBaselines.has(id)) {
+      state.marketBaselines.set(id, {
+        openingPrice: currentPrice,
+        firstSeenAt: now
+      });
+    }
+
+    const baseline = state.marketBaselines.get(id);
+    const openingPrice = baseline?.openingPrice ?? currentPrice;
+
+    const history = updateHistory(id, currentPrice, now);
+    const windowPeak = getWindowPeak(history, now, windowMinutes);
+
+    const dropPctOpen = pctDrop(openingPrice, currentPrice);
+    const dropPctWindow = pctDrop(windowPeak, currentPrice);
+
+    const chart = buildChart(history, now, windowMinutes);
+
+    const row = toMarketRow({
+      market,
+      currentPrice,
+      previousPrice,
+      openingPrice,
+      dropPctOpen,
+      dropPctWindow,
+      chart,
+      windowMinutes,
+      now
+    });
+
+    nextMarkets.set(id, row);
   }
 
   if (!nextMarkets.size) {
-    console.log("parsed markets empty, keeping previous cache:", state.markets.size);
     return [...state.markets.values()];
   }
 
   state.markets = nextMarkets;
-  state.lastSync = Date.now();
-
-  console.log("state.markets size after update:", state.markets.size);
+  state.lastSync = now;
 
   return [...state.markets.values()];
 }
