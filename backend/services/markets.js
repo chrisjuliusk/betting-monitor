@@ -19,7 +19,7 @@ function pickCurrentPrice(market) {
   const prices = parseMaybeJsonArray(market.outcomePrices);
   if (prices.length) {
     const p = Number(prices[0]);
-    if (Number.isFinite(p) && p >= 0 && p <= 1) return p;
+    if (Number.isFinite(p) && p > 0 && p < 1) return p;
   }
 
   const fallback =
@@ -28,7 +28,7 @@ function pickCurrentPrice(market) {
     Number(market.bestAsk) ||
     0.5;
 
-  if (Number.isFinite(fallback) && fallback >= 0 && fallback <= 1) {
+  if (Number.isFinite(fallback) && fallback > 0 && fallback < 1) {
     return fallback;
   }
 
@@ -42,8 +42,8 @@ function toMarketRow(market) {
   const fairPrice = Math.min(0.99, Math.max(0.01, currentPrice + 0.01));
 
   return {
-    id: String(market.id || market.conditionId || crypto.randomUUID()),
-    market: market.question || market.groupItemTitle || market.slug || "Untitled market",
+    id: String(market.id),
+    market: market.question || market.groupItemTitle || "Untitled market",
     category: market.category || "Other",
     outcome: pickOutcome(market.outcomes),
     currentPrice,
@@ -58,7 +58,7 @@ function toMarketRow(market) {
     primaryWalletName: "",
     signal: "Watching",
     spread,
-    volume24h: Number(market.volume24hr || market.volume || 0),
+    volume24h: Number(market.volume24hr || 0),
     updatedAt: Date.now(),
     conditionId: market.conditionId || "",
     slug: market.slug || ""
@@ -66,14 +66,10 @@ function toMarketRow(market) {
 }
 
 export async function loadMarkets() {
-  const url =
-    "https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=200";
+  console.log("loadMarkets start");
 
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/json"
-    }
-  });
+  const response = await fetch("https://gamma-api.polymarket.com/markets");
+  console.log("gamma status:", response.status);
 
   if (!response.ok) {
     throw new Error(`Gamma markets failed with ${response.status}`);
@@ -81,31 +77,26 @@ export async function loadMarkets() {
 
   const data = await response.json();
 
-  console.log("loadMarkets raw isArray:", Array.isArray(data));
+  console.log("gamma isArray:", Array.isArray(data));
+  console.log("gamma length:", Array.isArray(data) ? data.length : "not-array");
   console.log(
-    "loadMarkets raw preview:",
-    JSON.stringify(Array.isArray(data) ? data.slice(0, 2) : data).slice(0, 1200)
+    "gamma first item:",
+    Array.isArray(data) && data.length
+      ? JSON.stringify(data[0]).slice(0, 700)
+      : "none"
   );
-
-  const rows = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.data)
-    ? data.data
-    : Array.isArray(data?.markets)
-    ? data.markets
-    : [];
 
   state.markets.clear();
 
-  for (const market of rows) {
+  for (const market of data) {
+    if (market.closed || market.archived || market.active === false) continue;
+
     const row = toMarketRow(market);
     state.markets.set(row.id, row);
   }
 
+  console.log("state.markets size after loop:", state.markets.size);
+
   state.lastSync = Date.now();
-
-  console.log("loadMarkets parsed rows:", rows.length);
-  console.log("state.markets size:", state.markets.size);
-
   return [...state.markets.values()];
 }
