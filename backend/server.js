@@ -7,6 +7,7 @@ import { startMarketStream } from "./services/stream.js";
 import { profileHref } from "./services/profiles.js";
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -19,15 +20,13 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     markets: state.markets.size,
     wallets: state.wallets.size,
-    lastSync: state.lastSync,
+    lastSync: state.lastSync
   });
 });
 
 app.get("/api/markets", async (_req, res) => {
   try {
-    if (!state.markets.size) {
-      await loadMarkets();
-    }
+    await loadMarkets();
     res.json([...state.markets.values()]);
   } catch (error) {
     console.error("GET /api/markets failed:", error);
@@ -45,17 +44,13 @@ app.get("/api/timeline/:conditionId", async (req, res) => {
       return {
         ...row,
         walletLabel: walletObj?.nickname || row.wallet,
-        profileUrl: walletObj
-          ? profileHref(walletObj)
-          : row.wallet
-            ? `https://polymarket.com/profile/${row.wallet}`
-            : "#",
+        profileUrl: walletObj ? profileHref(walletObj) : (row.wallet ? `https://polymarket.com/profile/${row.wallet}` : "#")
       };
     });
 
     res.json({
       timeline,
-      topWallet: result.topWallet || "",
+      topWallet: result.topWallet || ""
     });
   } catch (error) {
     console.error("GET /api/timeline failed:", error);
@@ -67,12 +62,10 @@ app.get("/api/wallets", (_req, res) => {
   try {
     const rows = [...state.wallets.values()].map((w) => ({
       ...w,
-      profileUrl: profileHref(w),
+      profileUrl: profileHref(w)
     }));
 
-    rows.sort(
-      (a, b) => (b.score + b.activity * 2) - (a.score + a.activity * 2)
-    );
+    rows.sort((a, b) => (b.score + b.activity * 2) - (a.score + a.activity * 2));
 
     res.json(rows.slice(0, 100));
   } catch (error) {
