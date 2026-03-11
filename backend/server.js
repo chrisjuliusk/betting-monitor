@@ -1,62 +1,96 @@
-import 'dotenv/config';
-import cors from 'cors';
-import express from 'express';
-import { buildFeed, buildMarketDetails } from './services/feed.js';
+import express from "express";
+import cors from "cors";
+import { state } from "./services/state.js";
+import { loadMarkets } from "./services/markets.js";
+import { loadTimeline } from "./services/trades.js";
+import { startMarketStream } from "./services/stream.js";
+import { profileHref } from "./services/profiles.js";
 
 const app = express();
-const port = Number(process.env.PORT || 3000);
-const cache = new Map();
-const TTL_MS = 20_000;
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'polymarket-pod-monitor', ts: Date.now() });
+app.get("/", (_req, res) => {
+  res.send("Betting Monitor Backend Running");
 });
 
-app.get('/api/markets', async (req, res) => {
-  const window = String(req.query.window || '60m');
-  const limit = Number(req.query.limit || 200);
-  const key = `feed:${window}:${limit}`;
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    markets: state.markets.size,
+    wallets: state.wallets.size,
+    lastSync: state.lastSync
+  });
+});
 
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.ts < TTL_MS) {
-    return res.json({ cached: true, count: cached.data.length, data: cached.data });
-  }
-
+app.get("/api/markets", async (_req, res) => {
   try {
-    const data = await buildFeed({ window, limit });
-    cache.set(key, { ts: Date.now(), data });
-    return res.json({ cached: false, count: data.length, data });
+    await loadMarkets();
+    res.json([...state.markets.values()]);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error("GET /api/markets failed:", error);
+    res.status(500).json({ ok: false });
   }
 });
 
-app.get('/api/market/:conditionId/details', async (req, res) => {
-  const { conditionId } = req.params;
-  const tokenId = String(req.query.tokenId || '');
-
-  if (!tokenId) {
-    return res.status(400).json({ error: 'tokenId query parameter is required' });
-  }
-
-  const key = `details:${conditionId}:${tokenId}`;
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.ts < TTL_MS) {
-    return res.json({ cached: true, ...cached.data });
-  }
-
+app.get("/api/timeline/:conditionId", async (req, res) => {
   try {
-    const data = await buildMarketDetails(conditionId, tokenId);
-    cache.set(key, { ts: Date.now(), data });
-    return res.json({ cached: false, ...data });
+    const { conditionId } = req.params;
+    const result = await loadTimeline(conditionId);
+
+    const timeline = (result.timeline || []).map(row => {
+      const walletObj = state.wallets.get(row.wallet);
+
+      return {
+        ...row,
+        walletLabel: walletObj?.nickname || row.wallet,
+        profileUrl: walletObj
+          ? profileHref(walletObj)
+          : `https://polymarket.com/profile/${row.wallet}`
+      };
+    });
+
+    res.json({
+      timeline,
+      topWallet: result.topWallet || ""
+    });
+
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error("GET /api/timeline failed:", error);
+    res.status(500).json({ ok: false });
   }
 });
 
-app.listen(port, () => {
-  console.log(`polymarket-pod-monitor backend listening on ${port}`);
+app.get("/api/wallets", (_req, res) => {
+  try {
+    const rows = [...state.wallets.values()].map(w => ({
+      ...w,
+      profileUrl: profileHref(w)
+    }));
+
+    rows.sort((a,b)=>(b.score+b.activity*2)-(a.score+a.activity*2));
+
+    res.json(rows.slice(0,100));
+
+  } catch (error) {
+    console.error("GET /api/wallets failed:", error);
+    res.status(500).json({ ok:false });
+  }
 });
+
+const port = Number(process.env.PORT) || 10000;
+
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Betting Monitor backend listening on port ${port}`);
+});
+
+(async () => {
+  try {
+    await loadMarkets();
+    startMarketStream();
+    console.log("Initial market load complete");
+  } catch (error) {
+    console.error("Background init failed:", error);
+  }
+})();
