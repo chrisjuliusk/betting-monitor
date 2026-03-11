@@ -1,14 +1,15 @@
 {
-  "name": "betting-monitor-backend",
+  "name": "polymarket-pod-monitor-backend",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "ws": "^8.18.0"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
   }
 }
