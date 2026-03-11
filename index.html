@@ -1,973 +1,300 @@
-Code
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Betting Monitor</title>
-  <style>
-    :root{
-      --bg:#05070b;
-      --panel:#0d1118;
-      --panel2:#111827;
-      --line:rgba(255,255,255,.08);
-      --line2:rgba(94,169,255,.2);
-      --text:#edf2ff;
-      --muted:rgba(237,242,255,.56);
-      --green:#39d98a;
-      --red:#ff6f7f;
-      --blue:#62a9ff;
-      --yellow:#f6c65b;
-      --white:#fff;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Betting Monitor</title>
 
-    *{box-sizing:border-box}
-    html,body{
-      margin:0;
-      padding:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family:Inter,Arial,sans-serif;
-    }
+<style>
 
-    body{
-      min-height:100vh;
-      background-image:
-        radial-gradient(circle at top right,rgba(58,95,255,.18),transparent 28%),
-        radial-gradient(circle at top left,rgba(255,255,255,.05),transparent 18%);
-    }
+body{
+margin:0;
+background:#06080d;
+color:#e8edff;
+font-family:Inter,Arial;
+}
 
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:14px;
-      padding:10px 16px;
-      border-bottom:1px solid var(--line);
-      background:rgba(5,7,11,.9);
-      position:sticky;
-      top:0;
-      z-index:50;
-      backdrop-filter:blur(14px);
-    }
+.topbar{
+display:flex;
+justify-content:space-between;
+padding:12px 18px;
+border-bottom:1px solid rgba(255,255,255,.08);
+background:#05070b;
+}
 
-    .left-top,.right-top,.tabs,.filters,.metrics,.legend{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
+.brand{
+font-weight:700;
+letter-spacing:.15em;
+text-transform:uppercase;
+font-size:13px;
+}
 
-    .brand-title{
-      font-size:14px;
-      font-weight:700;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-    }
+.rows{
+height:calc(100vh - 100px);
+overflow:auto;
+}
 
-    .sub,.tiny{
-      font-size:12px;
-      color:var(--muted);
-    }
+.row{
+display:grid;
+grid-template-columns:2fr .6fr .7fr .9fr .9fr .8fr .8fr .7fr .9fr;
+gap:10px;
+padding:10px 14px;
+border-bottom:1px solid rgba(255,255,255,.06);
+cursor:pointer;
+font-size:12px;
+}
 
-    .dot{
-      width:9px;
-      height:9px;
-      border-radius:50%;
-      display:inline-block;
-      margin-right:8px;
-      background:var(--green);
-      box-shadow:0 0 10px rgba(57,217,138,.8);
-    }
+.row:hover{
+background:#101725;
+}
 
-    .btn,.tab,.field,.pill{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      color:var(--text);
-      border-radius:6px;
-      font-size:12px;
-      padding:8px 10px;
-    }
+.market-title{
+font-weight:700;
+font-size:13px;
+}
 
-    .btn,.tab{cursor:pointer}
+.green{color:#39d98a}
+.red{color:#ff6f7f}
+.muted{color:rgba(255,255,255,.55)}
 
-    .tab.active{
-      background:#162338;
-      border-color:var(--line2);
-    }
+.layout{
+display:grid;
+grid-template-columns:2fr 1fr;
+height:calc(100vh - 52px);
+}
 
-    .field{
-      background:rgba(0,0,0,.25);
-    }
+.sidebar{
+border-left:1px solid rgba(255,255,255,.08);
+padding:12px;
+}
 
-    .field.search{
-      min-width:220px;
-    }
+.chart{
+height:220px;
+border:1px solid rgba(255,255,255,.08);
+border-radius:6px;
+margin-top:10px;
+}
 
-    .controls{
-      padding:10px 16px 8px;
-      border-bottom:1px solid var(--line);
-      background:rgba(9,12,18,.95);
-      position:sticky;
-      top:46px;
-      z-index:40;
-      backdrop-filter:blur(12px);
-    }
-
-    .filters,.metrics{
-      margin-top:8px;
-    }
-
-    .pill{
-      color:var(--muted);
-    }
-
-    .notice{
-      margin-top:8px;
-      padding:10px 12px;
-      border-radius:8px;
-      background:rgba(255,111,127,.08);
-      color:#ffdce1;
-      border:1px solid rgba(255,111,127,.18);
-      font-size:12px;
-      white-space:pre-wrap;
-    }
-
-    .layout{
-      display:grid;
-      grid-template-columns:1.9fr 1.05fr;
-      min-height:calc(100vh - 110px);
-    }
-
-    .feed{
-      border-right:1px solid var(--line);
-    }
-
-    .sidebar{
-      background:rgba(255,255,255,.02);
-    }
-
-    .thead,.row{
-      display:grid;
-      grid-template-columns:2.5fr .65fr .95fr 1fr .95fr .9fr .95fr .75fr .95fr;
-      gap:10px;
-      align-items:center;
-    }
-
-    .thead{
-      position:sticky;
-      top:108px;
-      z-index:10;
-      background:#080b10;
-      border-bottom:1px solid var(--line);
-      padding:10px 14px;
-      font-size:10px;
-      text-transform:uppercase;
-      letter-spacing:.16em;
-      color:rgba(255,255,255,.44);
-    }
-
-    .rows{
-      max-height:calc(100vh - 148px);
-      overflow:auto;
-    }
-
-    .row{
-      padding:10px 14px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      background:rgba(0,0,0,.06);
-      cursor:pointer;
-      font-size:12px;
-    }
-
-    .row:nth-child(2n){
-      background:rgba(10,16,26,.7);
-    }
-
-    .row:hover,.row.active{
-      background:rgba(26,42,74,.78);
-    }
-
-    .market-title{
-      font-size:13px;
-      font-weight:700;
-      line-height:1.35;
-    }
-
-    .market-meta{
-      margin-top:4px;
-      color:var(--muted);
-      font-size:11px;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:10px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.05);
-    }
-
-    .badge.fast{
-      color:#ffd8de;
-      background:rgba(255,111,127,.1);
-      border-color:rgba(255,111,127,.18);
-    }
-
-    .badge.watch{
-      color:#d3deff;
-      background:rgba(98,169,255,.1);
-      border-color:rgba(98,169,255,.18);
-    }
-
-    .green{color:var(--green)}
-    .red{color:var(--red)}
-    .yellow{color:var(--yellow)}
-    .muted{color:var(--muted)}
-
-    .side-wrap{
-      display:grid;
-      gap:10px;
-      padding:12px;
-    }
-
-    .side-card{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.035);
-      border-radius:8px;
-      padding:12px;
-    }
-
-    .side-title{
-      font-size:11px;
-      color:rgba(255,255,255,.44);
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      margin-bottom:8px;
-    }
-
-    .detail-title{
-      font-size:18px;
-      font-weight:700;
-      line-height:1.4;
-    }
-
-    .detail-grid,.kpi-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-    }
-
-    .detail-box,.kpi{
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.22);
-      border-radius:8px;
-      padding:10px;
-    }
-
-    .detail-box .k,.kpi .k{
-      font-size:10px;
-      color:rgba(255,255,255,.44);
-      text-transform:uppercase;
-      letter-spacing:.12em;
-    }
-
-    .detail-box .v,.kpi .v{
-      margin-top:6px;
-      font-size:20px;
-      font-weight:700;
-    }
-
-    .chart-box{
-      height:240px;
-      border:1px solid var(--line);
-      border-radius:8px;
-      background:linear-gradient(180deg,rgba(98,169,255,.09),rgba(255,255,255,.02));
-      overflow:hidden;
-    }
-
-    .chart-box svg{
-      width:100%;
-      height:100%;
-      display:block;
-    }
-
-    .legend{
-      margin-top:8px;
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    .legend span{
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid transparent;
-      cursor:pointer;
-    }
-
-    .legend span.active{
-      border-color:var(--line);
-      background:rgba(255,255,255,.04);
-      color:#fff;
-    }
-
-    .legend .price::before,
-    .legend .open::before{
-      content:'';
-      display:inline-block;
-      width:10px;
-      height:2px;
-      margin-right:6px;
-      vertical-align:middle;
-    }
-
-    .legend .price::before{background:var(--blue)}
-    .legend .open::before{background:var(--green)}
-
-    .table-mini{
-      border:1px solid var(--line);
-      border-radius:8px;
-      overflow:hidden;
-    }
-
-    .mini-head,.mini-row{
-      display:grid;
-      gap:8px;
-      align-items:center;
-      padding:8px 10px;
-      font-size:11px;
-    }
-
-    .mini-head{
-      background:rgba(255,255,255,.04);
-      color:rgba(255,255,255,.44);
-      text-transform:uppercase;
-      letter-spacing:.12em;
-    }
-
-    .mini-row{
-      border-top:1px solid rgba(255,255,255,.06);
-    }
-
-    .event-table .mini-head,.event-table .mini-row{
-      grid-template-columns:1fr 1fr 1fr 1fr;
-    }
-
-    @media (max-width:1400px){
-      .layout{grid-template-columns:1fr}
-      .feed{border-right:none}
-      .rows{max-height:none}
-    }
-
-    @media (max-width:980px){
-      .thead,.row{grid-template-columns:2.2fr .8fr 1fr 1fr .9fr .9fr}
-      .hide-md{display:none}
-      .detail-grid,.kpi-grid{grid-template-columns:1fr 1fr}
-    }
-
-    @media (max-width:680px){
-      .thead,.row{grid-template-columns:2.2fr .9fr 1fr 1fr}
-      .hide-sm{display:none}
-      .detail-grid,.kpi-grid{grid-template-columns:1fr}
-      .field.search{min-width:100%}
-    }
-  </style>
+</style>
 </head>
+
 <body>
-  <div class="app">
-    <div class="topbar">
-      <div class="left-top">
-        <div class="brand-title">Betting Monitor</div>
-        <div class="sub"><span class="dot"></span><span id="streamStatus">Backend connected</span></div>
-        <div class="sub" id="eventCounter">0 markets loaded</div>
-      </div>
-      <div class="right-top">
-        <button class="btn" id="toggleControlsBtn">Hide controls</button>
-        <button class="btn" id="refreshBtn">Refresh</button>
-      </div>
-    </div>
-
-    <div class="controls" id="controlsArea">
-      <div class="tabs">
-        <button class="tab active" data-tab="all">All Drops</button>
-        <button class="tab" data-tab="fast">Fast Moves</button>
-        <button class="tab" data-tab="watching">Watching</button>
-      </div>
-
-      <div class="filters">
-        <input id="searchInput" class="field search" placeholder="Search market or category..." />
-        <select id="categorySelect" class="field"></select>
-        <select id="sideSelect" class="field">
-          <option value="all">All sides</option>
-          <option value="YES">YES</option>
-          <option value="NO">NO</option>
-        </select>
-        <select id="sortSelect" class="field">
-          <option value="dropWindow">Sort: Biggest drop (window)</option>
-          <option value="dropOpen">Sort: Biggest drop (open)</option>
-          <option value="recent">Sort: Most recent</option>
-          <option value="volume">Sort: Volume</option>
-        </select>
-        <select id="windowSelect" class="field">
-          <option value="1">1 min window</option>
-          <option value="3">3 min window</option>
-          <option value="5">5 min window</option>
-          <option value="15">15 min window</option>
-          <option value="60" selected>60 min window</option>
-        </select>
-        <select id="minDropSelect" class="field">
-          <option value="0">Min drop 0%</option>
-          <option value="1">Min drop 1%</option>
-          <option value="2">Min drop 2%</option>
-          <option value="3" selected>Min drop 3%</option>
-          <option value="5">Min drop 5%</option>
-          <option value="10">Min drop 10%</option>
-        </select>
-        <select id="volumeSelect" class="field">
-          <option value="0">Any volume</option>
-          <option value="5000">Vol > $5k</option>
-          <option value="25000">Vol > $25k</option>
-          <option value="100000">Vol > $100k</option>
-        </select>
-      </div>
-
-      <div class="metrics">
-        <div class="pill" id="sourceLabel">Backend markets</div>
-        <div class="pill" id="syncLabel">Last sync: —</div>
-        <div class="pill" id="dropStats">Drops: 0 · Fast: 0</div>
-        <div class="pill" id="marketStats">Markets: 0</div>
-      </div>
-
-      <div id="errorArea"></div>
-    </div>
-
-    <div class="layout">
-      <div class="feed">
-        <div class="thead">
-          <div>Market</div>
-          <div>Side</div>
-          <div>Alert</div>
-          <div>Price</div>
-          <div class="hide-sm">Open</div>
-          <div class="hide-md">Drop win</div>
-          <div class="hide-md">Drop open</div>
-          <div class="hide-sm">Window</div>
-          <div class="hide-sm">Signal</div>
-        </div>
-        <div class="rows" id="rows"></div>
-      </div>
-
-      <div class="sidebar">
-        <div class="side-wrap">
-          <div class="side-card">
-            <div class="side-title">Selected market</div>
-            <div id="detailPane"></div>
-          </div>
-
-          <div class="side-card">
-            <div class="side-title">Price progression</div>
-            <div class="chart-box" id="chartBox"></div>
-            <div class="legend" id="chartLegendControls">
-              <span class="price toggle-line active" data-line="price">Price</span>
-              <span class="open toggle-line active" data-line="open">Opening</span>
-            </div>
-          </div>
-
-          <div class="side-card">
-            <div class="side-title">Chart points</div>
-            <div class="table-mini event-table">
-              <div class="mini-head">
-                <div>Time</div>
-                <div>Price</div>
-                <div>Drop vs prev</div>
-                <div>Drop vs open</div>
-              </div>
-              <div id="eventRows"></div>
-            </div>
-          </div>
-
-          <div class="side-card">
-            <div class="side-title">Market intelligence</div>
-            <div class="kpi-grid">
-              <div class="kpi"><div class="k">Opening</div><div class="v" id="kpiOpening">—</div></div>
-              <div class="kpi"><div class="k">Current</div><div class="v" id="kpiCurrent">—</div></div>
-              <div class="kpi"><div class="k">Drop window</div><div class="v" id="kpiDropWindow">—</div></div>
-              <div class="kpi"><div class="k">Drop open</div><div class="v" id="kpiDropOpen">—</div></div>
-              <div class="kpi"><div class="k">Volume</div><div class="v" id="kpiVolume">—</div></div>
-              <div class="kpi"><div class="k">Window</div><div class="v" id="kpiWindow">—</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const API_BASE = 'https://betting-monitor-backend.onrender.com';
-
-    const state = {
-      search: '',
-      category: 'all',
-      side: 'all',
-      sort: 'dropWindow',
-      minDrop: 3,
-      minVolume: 0,
-      tab: 'all',
-      controlsHidden: false,
-      markets: [],
-      selectedId: null,
-      lastSync: null,
-      error: '',
-      chartLines: { price: true, open: true },
-      windowMinutes: 60
-    };
-
-    const $ = (id) => document.getElementById(id);
-
-    const asNumber = (v, f = 0) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : f;
-    };
-
-    const escapeHtml = (s) =>
-      String(s ?? '').replace(/[&<>"']/g, (m) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[m]));
-
-    const formatUsd = (v) =>
-      new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0
-      }).format(asNumber(v));
-
-    const formatProb = (v) => `${(asNumber(v) * 100).toFixed(2)}%`;
-
-    const formatOdds = (v) => {
-      const p = asNumber(v);
-      if (p <= 0 || p >= 1) return '—';
-      return (1 / p).toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
-    };
-
-    const formatAgo = (ts) => {
-      if (!ts) return '—';
-      const s = Math.floor((Date.now() - ts) / 1000);
-      if (s < 60) return `${s}s ago`;
-      const m = Math.floor(s / 60);
-      if (m < 60) return `${m}m ago`;
-      const h = Math.floor(m / 60);
-      return `${h}h ago`;
-    };
-
-    const formatTime = (ts) => {
-      if (!ts) return '—';
-      const d = new Date(ts);
-      const p = (n) => String(n).padStart(2, '0');
-      return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-    };
-
-    function recalcMarket(item, windowMinutes) {
-      const chart = Array.isArray(item.chart) ? item.chart.slice() : [];
-      const currentPrice = asNumber(item.currentPrice);
-      const openingPrice = asNumber(item.openingPrice, currentPrice);
-      const updatedAt = asNumber(item.updatedAt, Date.now());
-
-      let previousPrice = asNumber(item.previousPrice, currentPrice);
-
-      if (chart.length >= 2) {
-        previousPrice = asNumber(chart[chart.length - 2].price, previousPrice);
-      }
-
-      const cutoff = updatedAt - windowMinutes * 60 * 1000;
-      const inWindow = chart.filter((p) => asNumber(p.ts) >= cutoff);
-      const basePoint = inWindow.length ? inWindow[0] : (chart.length ? chart[0] : null);
-      const baseWindowPrice = asNumber(basePoint?.price, previousPrice);
-
-      const dropPctWindow = baseWindowPrice > 0 && currentPrice < baseWindowPrice
-        ? ((baseWindowPrice - currentPrice) / baseWindowPrice) * 100
-        : 0;
-
-      const dropPctOpen = openingPrice > 0 && currentPrice < openingPrice
-        ? ((openingPrice - currentPrice) / openingPrice) * 100
-        : 0;
-
-      const dropPctPrev = previousPrice > 0 && currentPrice < previousPrice
-        ? ((previousPrice - currentPrice) / previousPrice) * 100
-        : 0;
-
-      let signal = 'Watching';
-      if (dropPctWindow >= 5 || dropPctOpen >= 5) signal = 'Fast move';
-
-      return {
-        ...item,
-        previousPrice,
-        openingPrice,
-        dropPctWindow,
-        dropPctOpen,
-        dropPctPrev,
-        dropPct: dropPctWindow,
-        dropWindowMinutes: windowMinutes,
-        signal
-      };
-    }
-
-    async function loadMarkets() {
-      const res = await fetch(`${API_BASE}/api/markets?_=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`markets failed (${res.status})`);
-
-      const raw = await res.json();
-      if (!Array.isArray(raw)) throw new Error('markets response is not an array');
-
-      state.markets = raw.map((m) => recalcMarket(m, state.windowMinutes));
-      if (!state.selectedId && state.markets[0]) state.selectedId = state.markets[0].id;
-      state.lastSync = Date.now();
-    }
-
-    function getSelected() {
-      const list = filteredMarkets();
-      return list.find((x) => x.id === state.selectedId) || list[0] || null;
-    }
-
-    function filteredMarkets() {
-      let list = [...state.markets];
-
-      if (state.category !== 'all') list = list.filter((x) => x.category === state.category);
-      if (state.side !== 'all') list = list.filter((x) => x.outcome === state.side);
-
-      if (state.search.trim()) {
-        const q = state.search.trim().toLowerCase();
-        list = list.filter((x) =>
-          (x.market || '').toLowerCase().includes(q) ||
-          (x.category || '').toLowerCase().includes(q) ||
-          (x.signal || '').toLowerCase().includes(q)
-        );
-      }
-
-      list = list.filter((x) =>
-        asNumber(x.dropPctWindow) >= state.minDrop &&
-        asNumber(x.volume24h) >= state.minVolume
-      );
-
-      if (state.tab === 'fast') {
-        list = list.filter((x) => asNumber(x.dropPctWindow) >= 3 || asNumber(x.dropPctOpen) >= 3);
-      }
-
-      if (state.tab === 'watching') {
-        list = list.filter((x) => x.signal === 'Watching');
-      }
-
-      if (state.sort === 'dropWindow') {
-        list.sort((a, b) => asNumber(b.dropPctWindow) - asNumber(a.dropPctWindow));
-      } else if (state.sort === 'dropOpen') {
-        list.sort((a, b) => asNumber(b.dropPctOpen) - asNumber(a.dropPctOpen));
-      } else if (state.sort === 'recent') {
-        list.sort((a, b) => asNumber(b.updatedAt) - asNumber(a.updatedAt));
-      } else if (state.sort === 'volume') {
-        list.sort((a, b) => asNumber(b.volume24h) - asNumber(a.volume24h));
-      }
-
-      return list;
-    }
-
-    function renderControls() {
-      $('controlsArea').style.display = state.controlsHidden ? 'none' : 'block';
-      $('toggleControlsBtn').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls';
-
-      $('sourceLabel').textContent = `Backend markets · ${state.windowMinutes}m drop window`;
-      $('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
-      $('eventCounter').textContent = `${state.markets.length} markets loaded`;
-
-      $('searchInput').value = state.search;
-
-      const cats = ['all', ...Array.from(new Set(state.markets.map((x) => x.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-      $('categorySelect').innerHTML = cats.map((c) =>
-        `<option value="${escapeHtml(c)}">${c === 'all' ? 'All categories' : escapeHtml(c)}</option>`
-      ).join('');
-      $('categorySelect').value = state.category;
-
-      $('sideSelect').value = state.side;
-      $('sortSelect').value = state.sort;
-      $('minDropSelect').value = String(state.minDrop);
-      $('volumeSelect').value = String(state.minVolume);
-      $('windowSelect').value = String(state.windowMinutes);
-
-      const list = filteredMarkets();
-      const fast = list.filter((x) => asNumber(x.dropPctWindow) >= 3 || asNumber(x.dropPctOpen) >= 3).length;
-
-      $('dropStats').textContent = `Drops: ${list.length} · Fast: ${fast}`;
-      $('marketStats').textContent = `Markets: ${state.markets.length}`;
-
-      $('errorArea').innerHTML = state.error ? `<div class="notice">${escapeHtml(state.error)}</div>` : '';
-    }
-
-    function renderRows() {
-      const rowsEl = $('rows');
-      const list = filteredMarkets();
-      const selected = getSelected();
-
-      if (selected) state.selectedId = selected.id;
-
-      if (!list.length) {
-        rowsEl.innerHTML = `
-          <div class="row">
-            <div>No matching markets.</div>
-            <div></div><div></div><div></div>
-            <div class="hide-sm"></div>
-            <div class="hide-md"></div>
-            <div class="hide-md"></div>
-            <div class="hide-sm"></div>
-            <div class="hide-sm"></div>
-          </div>
-        `;
-        return;
-      }
-
-      rowsEl.innerHTML = list.map((item) => {
-        const badgeClass = item.signal === 'Fast move' ? 'fast' : 'watch';
-        return `
-          <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
-            <div>
-              <div class="market-title">${escapeHtml(item.market)}</div>
-              <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · vol ${formatUsd(item.volume24h)}</div>
-            </div>
-            <div>${escapeHtml(item.outcome || '')}</div>
-            <div class="${asNumber(item.dropPctWindow) >= 3 ? 'red' : 'green'}">${formatAgo(item.updatedAt)}</div>
-            <div>${formatOdds(item.previousPrice)} <span class="${asNumber(item.currentPrice) < asNumber(item.previousPrice) ? 'red' : 'green'}">→ ${formatOdds(item.currentPrice)}</span></div>
-            <div class="hide-sm">${formatOdds(item.openingPrice)}</div>
-            <div class="hide-md ${asNumber(item.dropPctWindow) >= 3 ? 'red' : 'muted'}">${asNumber(item.dropPctWindow).toFixed(2)}%</div>
-            <div class="hide-md ${asNumber(item.dropPctOpen) >= 3 ? 'red' : 'muted'}">${asNumber(item.dropPctOpen).toFixed(2)}%</div>
-            <div class="hide-sm">${item.dropWindowMinutes}m</div>
-            <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal)}</span></div>
-          </div>
-        `;
-      }).join('');
-
-      rowsEl.querySelectorAll('.row[data-id]').forEach((el) => {
-        el.onclick = () => {
-          state.selectedId = el.dataset.id;
-          render();
-        };
-      });
-    }
-
-    function renderChart() {
-      const box = $('chartBox');
-      const selected = getSelected();
-
-      if (!selected) {
-        box.innerHTML = '<div class="tiny" style="padding:12px;">No market selected.</div>';
-        return;
-      }
-
-      const chart = Array.isArray(selected.chart) ? selected.chart : [];
-      if (!chart.length) {
-        box.innerHTML = '<div class="tiny" style="padding:12px;">No chart data yet.</div>';
-        return;
-      }
-
-      const pts = chart.map((p, i) => ({
-        idx: i,
-        ts: asNumber(p.ts, Date.now()),
-        price: asNumber(p.price, selected.currentPrice)
-      }));
-
-      const w = 460;
-      const h = 240;
-      const padX = 16;
-      const padY = 18;
-
-      const vals = pts.map((p) => p.price);
-      vals.push(asNumber(selected.openingPrice, selected.currentPrice));
-
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      const range = Math.max(0.0001, max - min);
-
-      const toLine = () => pts.map((p, i) => {
-        const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
-        const y = h - padY - ((p.price - min) / range) * (h - padY * 2);
-        return `${x},${y}`;
-      }).join(' ');
-
-      const openingY = h - padY - ((asNumber(selected.openingPrice, selected.currentPrice) - min) / range) * (h - padY * 2);
-
-      box.innerHTML = `
-        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-          ${state.chartLines.open ? `<line x1="${padX}" y1="${openingY}" x2="${w - padX}" y2="${openingY}" stroke="rgba(57,217,138,0.9)" stroke-width="1.5" stroke-dasharray="4 4"></line>` : ''}
-          ${state.chartLines.price ? `<polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${toLine()}"></polyline>` : ''}
-        </svg>
-      `;
-    }
-
-    function renderDetail() {
-      const selected = getSelected();
-      const detail = $('detailPane');
-      const eventRows = $('eventRows');
-
-      if (!selected) {
-        detail.innerHTML = '<div class="tiny">Select a market from the feed.</div>';
-        eventRows.innerHTML = '';
-        return;
-      }
-
-      detail.innerHTML = `
-        <div class="detail-title">${escapeHtml(selected.market)}</div>
-        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-          <span class="badge">${escapeHtml(selected.category || '')}</span>
-          <span class="badge">${escapeHtml(selected.outcome || '')}</span>
-          <span class="badge ${selected.signal === 'Fast move' ? 'fast' : 'watch'}">${escapeHtml(selected.signal || '')}</span>
-        </div>
-        <div class="detail-grid" style="margin-top:10px;">
-          <div class="detail-box">
-            <div class="k">Opening price</div>
-            <div class="v">${formatOdds(selected.openingPrice)}</div>
-            <div class="tiny">${formatProb(selected.openingPrice)}</div>
-          </div>
-          <div class="detail-box">
-            <div class="k">Current price</div>
-            <div class="v">${formatOdds(selected.currentPrice)}</div>
-            <div class="tiny">${formatProb(selected.currentPrice)}</div>
-          </div>
-          <div class="detail-box">
-            <div class="k">Drop vs window</div>
-            <div class="v ${asNumber(selected.dropPctWindow) >= 3 ? 'red' : 'muted'}">${asNumber(selected.dropPctWindow).toFixed(2)}%</div>
-            <div class="tiny">${selected.dropWindowMinutes} minute basis</div>
-          </div>
-          <div class="detail-box">
-            <div class="k">Drop vs opening</div>
-            <div class="v ${asNumber(selected.dropPctOpen) >= 3 ? 'red' : 'muted'}">${asNumber(selected.dropPctOpen).toFixed(2)}%</div>
-            <div class="tiny">since first tracked price</div>
-          </div>
-        </div>
-      `;
-
-      renderChart();
-
-      const chart = Array.isArray(selected.chart) ? selected.chart : [];
-      eventRows.innerHTML = chart.length
-        ? chart.slice().reverse().map((p, idx, arr) => {
-            const currentPrice = asNumber(p.price);
-            const prevPrice = idx < arr.length - 1 ? asNumber(arr[idx + 1].price, currentPrice) : currentPrice;
-            const openPrice = asNumber(selected.openingPrice, currentPrice);
-
-            const dropPrev = prevPrice > 0 && currentPrice < prevPrice ? ((prevPrice - currentPrice) / prevPrice) * 100 : 0;
-            const dropOpen = openPrice > 0 && currentPrice < openPrice ? ((openPrice - currentPrice) / openPrice) * 100 : 0;
-
-            return `
-              <div class="mini-row">
-                <div>${formatTime(p.ts)}</div>
-                <div>${formatOdds(currentPrice)}</div>
-                <div class="${dropPrev >= 1 ? 'red' : 'muted'}">${dropPrev.toFixed(2)}%</div>
-                <div class="${dropOpen >= 1 ? 'red' : 'muted'}">${dropOpen.toFixed(2)}%</div>
-              </div>
-            `;
-          }).join('')
-        : '<div class="mini-row"><div>No chart points.</div><div></div><div></div><div></div></div>';
-
-      $('kpiOpening').textContent = formatOdds(selected.openingPrice);
-      $('kpiCurrent').textContent = formatOdds(selected.currentPrice);
-      $('kpiDropWindow').textContent = `${asNumber(selected.dropPctWindow).toFixed(2)}%`;
-      $('kpiDropOpen').textContent = `${asNumber(selected.dropPctOpen).toFixed(2)}%`;
-      $('kpiVolume').textContent = formatUsd(selected.volume24h);
-      $('kpiWindow').textContent = `${selected.dropWindowMinutes}m`;
-    }
-
-    function render() {
-      renderControls();
-      renderRows();
-      renderDetail();
-    }
-
-    async function init() {
-      try {
-        state.error = '';
-        await loadMarkets();
-        render();
-      } catch (err) {
-        console.error(err);
-        state.error = `Frontend error:\n${err.message || String(err)}`;
-        render();
-      }
-    }
-
-    $('searchInput').addEventListener('input', (e) => {
-      state.search = e.target.value;
-      render();
-    });
-
-    $('categorySelect').addEventListener('change', (e) => {
-      state.category = e.target.value;
-      render();
-    });
-
-    $('sideSelect').addEventListener('change', (e) => {
-      state.side = e.target.value;
-      render();
-    });
-
-    $('sortSelect').addEventListener('change', (e) => {
-      state.sort = e.target.value;
-      render();
-    });
-
-    $('minDropSelect').addEventListener('change', (e) => {
-      state.minDrop = asNumber(e.target.value, 0);
-      render();
-    });
-
-    $('volumeSelect').addEventListener('change', (e) => {
-      state.minVolume = asNumber(e.target.value, 0);
-      render();
-    });
-
-    $('windowSelect').addEventListener('change', async (e) => {
-      state.windowMinutes = asNumber(e.target.value, 60);
-      state.markets = state.markets.map((m) => recalcMarket(m, state.windowMinutes));
-      render();
-    });
-
-    document.querySelectorAll('.tab').forEach((el) => {
-      el.addEventListener('click', () => {
-        state.tab = el.dataset.tab;
-        document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-        el.classList.add('active');
-        render();
-      });
-    });
-
-    $('toggleControlsBtn').addEventListener('click', () => {
-      state.controlsHidden = !state.controlsHidden;
-      render();
-    });
-
-    $('refreshBtn').addEventListener('click', async () => {
-      await init();
-    });
-
-    $('chartLegendControls').addEventListener('click', (e) => {
-      const el = e.target.closest('.toggle-line');
-      if (!el) return;
-      const key = el.dataset.line;
-      state.chartLines[key] = !state.chartLines[key];
-      el.classList.toggle('active', state.chartLines[key]);
-      renderChart();
-    });
-
-    window.addEventListener('error', (e) => {
-      state.error = `JS crash:\n${e.message}`;
-      render();
-    });
-
-    init();
-  </script>
+
+<div class="topbar">
+
+<div class="brand">
+BETTING MONITOR
+</div>
+
+<div>
+<span id="status">Backend connected</span>
+<span id="count"></span>
+</div>
+
+</div>
+
+<div class="layout">
+
+<div>
+
+<div class="rows" id="rows"></div>
+
+</div>
+
+<div class="sidebar">
+
+<div id="detail"></div>
+
+<div class="chart" id="chart"></div>
+
+<div id="timeline"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const API="https://betting-monitor-backend.onrender.com"
+
+let markets=[]
+let timeline=[]
+let selected=null
+
+function odds(p){
+if(p<=0||p>=1)return "—"
+return (1/p).toFixed(3)
+}
+
+function usd(v){
+return new Intl.NumberFormat('en-US',{
+style:'currency',
+currency:'USD',
+maximumFractionDigits:0
+}).format(v||0)
+}
+
+async function loadMarkets(){
+
+const r=await fetch(API+"/api/markets")
+markets=await r.json()
+
+document.getElementById("count").innerText=
+markets.length+" markets loaded"
+
+renderRows()
+
+}
+
+async function loadTimeline(id){
+
+const r=await fetch(API+"/api/timeline/"+id)
+
+const data=await r.json()
+
+timeline=data.timeline||[]
+
+renderTimeline()
+
+renderChart()
+
+}
+
+function renderRows(){
+
+const el=document.getElementById("rows")
+
+el.innerHTML=markets.map(m=>`
+
+<div class="row" onclick="selectMarket('${m.id}')">
+
+<div>
+<div class="market-title">${m.market}</div>
+<div class="muted">${m.category}</div>
+</div>
+
+<div>${m.outcome}</div>
+
+<div class="green">live</div>
+
+<div>${odds(m.previousPrice)} → ${odds(m.currentPrice)}</div>
+
+<div>${odds(m.fairPrice)}</div>
+
+<div>${m.dropPct.toFixed(2)}%</div>
+
+<div>${usd(m.aggressiveFlowUsd)}</div>
+
+<div>${m.smartWalletScore}</div>
+
+<div>${m.signal}</div>
+
+</div>
+
+`).join("")
+
+}
+
+async function selectMarket(id){
+
+selected=markets.find(x=>x.id===id)
+
+renderDetail()
+
+await loadTimeline(selected.conditionId)
+
+}
+
+function renderDetail(){
+
+const d=document.getElementById("detail")
+
+if(!selected){
+d.innerHTML=""
+return
+}
+
+d.innerHTML=`
+
+<h3>${selected.market}</h3>
+
+<div>Opening: ${odds(selected.openingPrice)}</div>
+
+<div>Current: ${odds(selected.currentPrice)}</div>
+
+<div>Fair: ${odds(selected.fairPrice)}</div>
+
+<div>Wallet: ${selected.primaryWallet||"pending"}</div>
+
+`
+
+}
+
+function renderTimeline(){
+
+const el=document.getElementById("timeline")
+
+if(!timeline.length){
+el.innerHTML="loading timeline..."
+return
+}
+
+el.innerHTML=timeline.map(t=>`
+
+<div>
+
+${new Date(t.time).toLocaleTimeString()}
+${odds(t.price)}
+${usd(t.size)}
+
+</div>
+
+`).join("")
+
+}
+
+function renderChart(){
+
+const el=document.getElementById("chart")
+
+if(!timeline.length){
+el.innerHTML=""
+return
+}
+
+const w=400
+const h=220
+
+const prices=timeline.map(t=>t.price)
+
+const min=Math.min(...prices)
+const max=Math.max(...prices)
+
+const range=max-min||.001
+
+const pts=timeline.map((t,i)=>{
+
+const x=i/(timeline.length-1)*w
+const y=h-(t.price-min)/range*h
+
+return x+","+y
+
+}).join(" ")
+
+el.innerHTML=`<svg viewBox="0 0 ${w} ${h}">
+<polyline
+fill="none"
+stroke="#62a9ff"
+stroke-width="2"
+points="${pts}"
+/>
+</svg>`
+
+}
+
+loadMarkets()
+
+</script>
+
 </body>
 </html>
