@@ -1,6 +1,8 @@
 export const state = {
   markets: new Map(),
   wallets: new Map(),
+  priceHistory: new Map(),
+  marketBaselines: new Map(),
   lastSync: null
 };
 
