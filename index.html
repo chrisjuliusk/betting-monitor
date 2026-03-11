@@ -1,449 +1,194 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Betting Monitor</title>
-  <style>
-    :root {
-      --bg: #05070b;
-      --panel: #0d1118;
-      --line: rgba(255,255,255,0.08);
-      --line-2: rgba(94,162,255,0.18);
-      --text: #edf2ff;
-      --muted: rgba(237,242,255,0.56);
-      --green: #39d98a;
-      --red: #ff6f7f;
-      --blue: #62a9ff;
-      --yellow: #f6c65b;
-      --cyan: #5fe0ff;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Inter, Arial, sans-serif; }
-    body { min-height: 100vh; background-image: radial-gradient(circle at top right, rgba(58,95,255,0.18), transparent 28%), radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 18%); }
-    .app { min-height: 100vh; }
-    .topbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); background:rgba(5,7,11,.9); position:sticky; top:0; z-index:50; backdrop-filter:blur(14px); }
-    .left-top,.right-top,.tabs,.filters,.metrics { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .brand-title { font-size:14px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
-    .sub,.tiny { font-size:12px; color:var(--muted); }
-    .dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:8px; background:var(--green); box-shadow:0 0 10px rgba(57,217,138,.8); }
-    .btn,.tab,.field,.pill { border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); border-radius:6px; font-size:12px; padding:8px 10px; }
-    .btn { cursor:pointer; }
-    .btn.primary { background:#17365f; border-color:rgba(98,169,255,.35); }
-    .btn.live { background:rgba(57,217,138,.1); color:#d4ffea; border-color:rgba(57,217,138,.28); }
-    .btn.warn { background:rgba(246,198,91,.08); color:#ffeab8; border-color:rgba(246,198,91,.18); }
-    .tab.active { background:#162338; border-color:var(--line-2); }
-    .field { background:rgba(0,0,0,.25); }
-    .field.search { min-width:220px; }
-    .controls { padding:10px 16px 8px; border-bottom:1px solid var(--line); background:rgba(9,12,18,.95); position:sticky; top:46px; z-index:40; backdrop-filter:blur(12px); }
-    .filters,.metrics { margin-top:8px; }
-    .pill { color:var(--muted); }
-    .notice { margin-top:8px; padding:10px 12px; border-radius:8px; background:rgba(255,111,127,.08); color:#ffdce1; border:1px solid rgba(255,111,127,.18); font-size:12px; }
-    .layout { display:grid; grid-template-columns:1.9fr 1.05fr; min-height:calc(100vh - 110px); }
-    .feed { border-right:1px solid var(--line); }
-    .sidebar { background:rgba(255,255,255,.02); }
-    .thead,.row { display:grid; grid-template-columns:2.3fr .7fr .82fr 1.05fr .95fr .82fr .78fr .78fr .92fr; gap:10px; align-items:center; }
-    .thead { position:sticky; top:108px; z-index:10; background:#080b10; border-bottom:1px solid var(--line); padding:10px 14px; font-size:10px; text-transform:uppercase; letter-spacing:.16em; color:rgba(255,255,255,.44); }
-    .rows { max-height:calc(100vh - 148px); overflow:auto; }
-    .row { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.06); cursor:pointer; font-size:12px; }
-    .row:nth-child(2n) { background:rgba(10,16,26,.7); }
-    .row:hover,.row.active { background:rgba(26,42,74,.78); }
-    .market-title { font-size:13px; font-weight:700; line-height:1.35; }
-    .market-meta { margin-top:4px; color:var(--muted); font-size:11px; }
-    .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
-    .badge.whale { color:#bdf7ff; background:rgba(95,224,255,.1); border-color:rgba(95,224,255,.18); }
-    .badge.fast { color:#ffd8de; background:rgba(255,111,127,.1); border-color:rgba(255,111,127,.18); }
-    .badge.pressure { color:#ffecc2; background:rgba(246,198,91,.1); border-color:rgba(246,198,91,.18); }
-    .badge.smart { color:#d3deff; background:rgba(98,169,255,.1); border-color:rgba(98,169,255,.18); }
-    .green { color:var(--green); } .red { color:var(--red); } .yellow { color:var(--yellow); } .muted { color:var(--muted); }
-    .side-wrap { display:grid; gap:10px; padding:12px; }
-    .side-card { border:1px solid var(--line); background:rgba(255,255,255,.035); border-radius:8px; padding:12px; }
-    .side-title,.label { font-size:11px; color:rgba(255,255,255,.44); letter-spacing:.16em; text-transform:uppercase; margin-bottom:8px; }
-    .detail-title { font-size:18px; font-weight:700; line-height:1.4; }
-    .detail-grid,.kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .detail-box,.kpi { border:1px solid var(--line); background:rgba(0,0,0,.22); border-radius:8px; padding:10px; }
-    .detail-box .k,.kpi .k { font-size:10px; color:rgba(255,255,255,.44); text-transform:uppercase; letter-spacing:.12em; }
-    .detail-box .v,.kpi .v { margin-top:6px; font-size:20px; font-weight:700; }
-    .chart-box { height:230px; border:1px solid var(--line); border-radius:8px; background:linear-gradient(180deg, rgba(98,169,255,.09), rgba(255,255,255,.02)); overflow:hidden; position:relative; }
-    .chart-box svg { width:100%; height:100%; display:block; }
-    .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:8px; }
-    .legend span { cursor:pointer; padding:4px 8px; border-radius:999px; border:1px solid transparent; }
-    .legend span.active { border-color:var(--line); background:rgba(255,255,255,.04); color:white; }
-    .legend span::before { content:''; display:inline-block; width:10px; height:2px; margin-right:6px; vertical-align:middle; }
-    .legend .price::before { background:var(--blue); } .legend .fair::before { background:white; } .legend .open::before { background:var(--green); } .legend .limit::before { background:var(--yellow); }
-    .table-mini { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
-    .mini-head,.mini-row { display:grid; gap:8px; align-items:center; padding:8px 10px; font-size:11px; }
-    .mini-head { background:rgba(255,255,255,.04); color:rgba(255,255,255,.44); text-transform:uppercase; letter-spacing:.12em; }
-    .mini-row { border-top:1px solid rgba(255,255,255,.06); }
-    .event-table .mini-head,.event-table .mini-row { grid-template-columns:1.15fr .72fr .72fr .9fr 1.2fr; }
-    .wallet-table .mini-head,.wallet-table .mini-row { grid-template-columns:1.25fr .8fr .8fr .8fr; }
-    .link-wallet { color:#c7deff; text-decoration:none; }
-    .modal-backdrop { position:fixed; inset:0; background:rgba(3,5,10,.72); display:none; align-items:center; justify-content:center; z-index:120; backdrop-filter:blur(6px); }
-    .modal { width:min(540px, calc(100vw - 24px)); background:#0c1017; border:1px solid var(--line-2); border-radius:14px; padding:16px; box-shadow:0 30px 80px rgba(0,0,0,.45); }
-    .modal-title { font-size:16px; font-weight:700; }
-    .modal-grid { display:grid; gap:10px; margin-top:14px; }
-    .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
-    .input,.textarea { width:100%; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--text); border-radius:8px; padding:10px 12px; font-size:13px; }
-    .textarea { min-height:84px; resize:vertical; }
-    .tracker-list { display:grid; gap:8px; }
-    .tracker-item { border:1px solid var(--line); background:rgba(255,255,255,.03); border-radius:8px; padding:10px; }
-    @media (max-width:1400px){ .layout{grid-template-columns:1fr;} .feed{border-right:none;} .rows{max-height:none;} }
-    @media (max-width:980px){ .thead,.row{grid-template-columns:2.2fr .8fr 1fr 1.05fr .9fr .9fr;} .hide-md{display:none;} .detail-grid,.kpi-grid{grid-template-columns:1fr 1fr;} .event-table .mini-head,.event-table .mini-row{grid-template-columns:1.2fr .8fr .8fr 1fr;} .hide-evt-md{display:none;} }
-    @media (max-width:680px){ .thead,.row{grid-template-columns:2.2fr .9fr 1fr 1.05fr;} .hide-sm{display:none;} .detail-grid,.kpi-grid{grid-template-columns:1fr;} .field.search{min-width:100%;} .wallet-table .mini-head,.wallet-table .mini-row{grid-template-columns:1.2fr .8fr .9fr;} .hide-wallet-sm{display:none;} }
-  </style>
+<meta charset="UTF-8">
+<title>BETTING MONITOR</title>
+
+<style>
+body{
+background:#05070b;
+color:#fff;
+font-family:Arial;
+margin:0;
+}
+
+header{
+padding:12px 20px;
+border-bottom:1px solid #222;
+font-size:18px;
+font-weight:bold;
+letter-spacing:2px;
+}
+
+.container{
+display:grid;
+grid-template-columns: 1.5fr 1fr;
+height:calc(100vh - 50px);
+}
+
+.feed{
+border-right:1px solid #222;
+overflow:auto;
+}
+
+.row{
+padding:10px 15px;
+border-bottom:1px solid #111;
+cursor:pointer;
+}
+
+.row:hover{
+background:#0f1524;
+}
+
+.sidebar{
+padding:20px;
+overflow:auto;
+}
+
+.timeline-row{
+display:grid;
+grid-template-columns:120px 100px 100px 120px 1fr;
+padding:6px 0;
+border-bottom:1px solid #111;
+font-size:12px;
+}
+
+.wallet{
+color:#6db1ff;
+text-decoration:none;
+}
+
+.wallet:hover{
+text-decoration:underline;
+}
+
+.title{
+font-weight:bold;
+margin-bottom:8px;
+}
+
+</style>
 </head>
+
 <body>
-<div class="app">
-  <div class="topbar">
-    <div class="left-top">
-      <div><div class="brand-title">Betting Monitor</div></div>
-      <div class="sub"><span class="dot"></span><span id="streamStatus">Polymarket realtime feed</span></div>
-      <div class="sub" id="eventCounter">0 events processed</div>
-    </div>
-    <div class="right-top">
-      <button class="btn" id="toggleControlsBtn">Hide controls</button>
-      <button class="btn warn" id="muteBtn">Mute all</button>
-      <button class="btn primary" id="alertsBtn">Configure alerts</button>
-      <button class="btn live" id="liveBtn">Live</button>
-    </div>
-  </div>
 
-  <div class="controls" id="controlsArea">
-    <div class="tabs">
-      <button class="tab active" data-tab="all">All Drops</button>
-      <button class="tab" data-tab="fast">Fast Moves</button>
-      <button class="tab" data-tab="whale">Whale Flow</button>
-      <button class="tab" data-tab="smart">Smart Wallet</button>
-      <button class="tab" data-tab="pressure">Pressure</button>
-      <button class="tab" data-tab="history">History</button>
-      <button class="tab" data-tab="tracker">Bet Tracker</button>
-    </div>
-    <div class="filters">
-      <input id="searchInput" class="field search" placeholder="Search market, category, wallet, signal..." />
-      <select id="categorySelect" class="field"></select>
-      <select id="sideSelect" class="field"><option value="all">All sides</option><option value="YES">YES</option><option value="NO">NO</option></select>
-      <select id="sortSelect" class="field"><option value="drop">Sort: Biggest drop</option><option value="recent">Sort: Most recent</option><option value="flow">Sort: Flow</option><option value="wallet">Sort: Wallet score</option><option value="volume">Sort: Volume</option></select>
-      <select id="windowSelect" class="field"><option value="300000">Window: 5m</option><option value="900000">Window: 15m</option><option value="3600000">Window: 1h</option></select>
-      <select id="minDropSelect" class="field"><option value="1">Min drop 1%</option><option value="2">Min drop 2%</option><option value="3" selected>Min drop 3%</option><option value="5">Min drop 5%</option><option value="8">Min drop 8%</option></select>
-      <select id="volumeSelect" class="field"><option value="0">Any volume</option><option value="5000">Vol &gt; $5k</option><option value="25000">Vol &gt; $25k</option><option value="100000">Vol &gt; $100k</option></select>
-    </div>
-    <div class="metrics">
-      <div class="pill" id="sourceLabel">Booting live feed...</div>
-      <div class="pill" id="syncLabel">Last sync: —</div>
-      <div class="pill" id="dropStats">Drops: 0 · Whale: 0 · Smart: 0</div>
-      <div class="pill" id="marketStats">Markets: 0 · Fair edge+: 0</div>
-    </div>
-    <div id="errorArea"></div>
-  </div>
+<header>BETTING MONITOR</header>
 
-  <div class="layout">
-    <div class="feed">
-      <div class="thead">
-        <div>Market</div><div>Side</div><div>Alert</div><div>Price</div><div class="hide-sm">Fair</div><div class="hide-md">Drop</div><div class="hide-md">Flow</div><div class="hide-sm">Wallet</div><div class="hide-sm">Signal</div>
-      </div>
-      <div class="rows" id="rows"></div>
-    </div>
+<div class="container">
 
-    <div class="sidebar">
-      <div class="side-wrap">
-        <div class="side-card"><div class="side-title">Selected market</div><div id="detailPane"></div></div>
+<div class="feed" id="markets"></div>
 
-        <div class="side-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
-            <div class="side-title" style="margin-bottom:0;">Price progression</div>
-            <button class="btn primary" id="chartLogBtn">＋ Log market</button>
-          </div>
-          <div class="chart-box" id="chartBox"></div>
-          <div class="legend" id="chartLegendControls">
-            <span class="price toggle-line active" data-line="price">Price</span>
-            <span class="fair toggle-line active" data-line="fair">Fair</span>
-            <span class="open toggle-line active" data-line="open">Opening</span>
-            <span class="limit toggle-line active" data-line="limit">Order size / limit</span>
-          </div>
-        </div>
+<div class="sidebar">
 
-        <div class="side-card">
-          <div class="side-title">Market timeline</div>
-          <div class="table-mini event-table">
-            <div class="mini-head"><div>Time</div><div>Fair</div><div>Price</div><div>Size</div><div class="hide-evt-md">Wallet</div></div>
-            <div id="eventRows"></div>
-          </div>
-        </div>
+<div class="title">MARKET TIMELINE</div>
+<div id="timeline"></div>
 
-        <div class="side-card">
-          <div class="side-title">Wallet ranking</div>
-          <div class="table-mini wallet-table">
-            <div class="mini-head"><div>Wallet</div><div>Score</div><div>PnL edge</div><div class="hide-wallet-sm">Activity</div></div>
-            <div id="walletRows"></div>
-          </div>
-        </div>
+</div>
 
-        <div class="side-card">
-          <div class="side-title">Market intelligence</div>
-          <div class="kpi-grid">
-            <div class="kpi"><div class="k">Opening</div><div class="v" id="kpiOpening">0.0%</div></div>
-            <div class="kpi"><div class="k">Current</div><div class="v" id="kpiCurrent">0.0%</div></div>
-            <div class="kpi"><div class="k">Fair edge</div><div class="v" id="kpiEdge">0.0%</div></div>
-            <div class="kpi"><div class="k">Spread</div><div class="v" id="kpiSpread">0.0%</div></div>
-            <div class="kpi"><div class="k">Aggressive flow</div><div class="v" id="kpiFlow">$0</div></div>
-            <div class="kpi"><div class="k">Wallet score</div><div class="v" id="kpiWallet">0</div></div>
-          </div>
-        </div>
-
-        <div class="side-card"><div class="side-title">Bet tracker</div><div id="betTrackerPanel"><button class="btn primary" id="openBetTrackerBtn">Log market</button><div class="tiny" style="margin-top:8px;">Click any market in the feed and add it to your tracker with optional tags and stake notes.</div></div></div>
-        <div class="side-card"><div class="side-title">Tracked bets</div><div id="trackedBetsList" class="tracker-list"></div></div>
-        <div class="side-card"><div class="side-title">Notes</div><div class="tiny">This terminal tracks live price deterioration, inferred fair value, opening reference, price progression, event tape, and wallet intelligence. Wallet traces now try to resolve real trade activity from Polymarket public trade data and public profiles, then surface the actual wallet and profile where available. For a full institutional version, move trade history, wallet enrichment, and rankings to a backend collector.</div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" id="betModalBackdrop">
-    <div class="modal">
-      <div class="modal-title">Log market</div>
-      <div class="tiny" id="betModalSubtitle" style="margin-top:6px;"></div>
-      <div class="modal-grid">
-        <div><div class="label">Stake (€)</div><input id="betStakeInput" class="input" placeholder="N/A" /></div>
-        <div><div class="label">Live edge vs fair</div><input id="betEdgeInput" class="input" placeholder="Auto" readonly /></div>
-        <div><div class="label">Current odds</div><input id="betOddsInput" class="input" placeholder="Auto" readonly /></div>
-        <div><div class="label">Fair odds</div><input id="betFairOddsInput" class="input" placeholder="Auto" readonly /></div>
-        <div><div class="label">Tags</div><input id="betTagsInput" class="input" placeholder="Select tags (optional)" /></div>
-        <div><div class="label">Notes</div><textarea id="betNotesInput" class="textarea" placeholder="Add your note..."></textarea></div>
-      </div>
-      <div class="modal-actions"><button class="btn" id="betModalCancel">Cancel</button><button class="btn primary" id="betModalSave">Log market</button></div>
-    </div>
-  </div>
 </div>
 
 <script>
-const GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=250&order=volume_24hr&ascending=false";
-const MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
-const TRADES_API_URL = "https://data-api.polymarket.com/trades";
-const PUBLIC_PROFILE_URL = "https://gamma-api.polymarket.com/public-profile";
 
-const state = { trackedBets: [], activeModal: false, chartLines: { price:true, fair:true, open:true, limit:true }, search:"", category:"all", side:"all", sort:"drop", minDrop:3, minVolume:0, tab:"all", baselineWindowMs:300000, liveMode:true, muted:false, controlsHidden:false, error:"", sourceLabel:"Booting live feed...", lastSync:null, totalEvents:0, markets:[], fallbackMarkets:[], selectedId:null, walletRankings:[], selectedTraceKey:null };
+const GAMMA="https://gamma-api.polymarket.com/events?active=true&closed=false&limit=200";
+const TRADES="https://data-api.polymarket.com/trades";
 
-let ws = null; let baselineTimer = null;
-const marketByToken = new Map();
-const histories = new Map();
-const eventTapes = new Map();
-const walletMap = new Map();
-const tradeFetchCache = new Map();
-const profileFetchCache = new Map();
+let markets=[];
+let selectedMarket=null;
 
-function asNumber(v, fallback=0){ const n = Number(v); return Number.isFinite(n) ? n : fallback; }
-function clamp(v,min,max){ return Math.min(Math.max(v,min),max); }
-function formatUsd(v){ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(asNumber(v)); }
-function formatProb(v){ return `${(asNumber(v)*100).toFixed(1)}%`; }
-function formatOdds(v){ const p = asNumber(v); if (p<=0 || p>=1) return '—'; return (1/p).toFixed(2); }
-function formatAgo(ts){ if(!ts) return '—'; const s=Math.floor((Date.now()-ts)/1000); if(s<60) return `${s}s ago`; const m=Math.floor(s/60); if(m<60) return `${m}m ago`; const h=Math.floor(m/60); return `${h}h ago`; }
-function formatTime(ts){ const d=new Date(ts); const pad=n=>String(n).padStart(2,'0'); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${pad(d.getDate())}/${pad(d.getMonth()+1)}`; }
-function shortWallet(w){ return w ? `${w.slice(0,6)}...${w.slice(-4)}` : ''; }
-function escapeHtml(str){ return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function hashCode(str){ let h=0; for(let i=0;i<str.length;i++) h=((h<<5)-h)+str.charCodeAt(i)|0; return h; }
-function walletLabel(wallet){ return shortWallet(wallet); }
-function profileHref(walletObjOrAddress){ if(!walletObjOrAddress) return '#'; if(typeof walletObjOrAddress==='string') return `https://polymarket.com/profile/${walletObjOrAddress}`; const username = walletObjOrAddress.userName || walletObjOrAddress.username || ''; return username ? `https://polymarket.com/@${username}` : `https://polymarket.com/profile/${walletObjOrAddress.wallet}`; }
+async function loadMarkets(){
 
-function createWallet(wallet){
-  if(!wallet) return null;
-  if(!walletMap.has(wallet)) walletMap.set(wallet, { wallet, nickname: walletLabel(wallet), activity:0, score:clamp(35+(Math.abs(hashCode(wallet))%55),10,98), pnlEdge:((Math.abs(hashCode(wallet+'pnl'))%260)-80)/10, lastSeen:Date.now(), verified:false, source:'trace', userName:'' });
-  return walletMap.get(wallet);
-}
-function displayNameFromTrade(trade){ if(trade?.userName && String(trade.userName).trim()) return `@${String(trade.userName).trim()}`; if(trade?.name && String(trade.name).trim()) return String(trade.name).trim(); if(trade?.pseudonym && String(trade.pseudonym).trim()) return String(trade.pseudonym).trim(); return shortWallet(trade?.proxyWallet || ''); }
-async function resolveWalletProfile(address){ if(!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) return null; if(profileFetchCache.has(address)) return profileFetchCache.get(address); const req = fetch(`${PUBLIC_PROFILE_URL}?address=${encodeURIComponent(address)}`).then(r=>r.ok?r.json():null).then(p=>p && (p.userName||p.username||p.name||p.pseudonym)?p:null).catch(()=>null); profileFetchCache.set(address, req); return req; }
+const r=await fetch(GAMMA);
+const events=await r.json();
 
-async function ensureRealTraceForMarket(market){
-  if(!market) return;
-  const key = market.conditionId || (market.eventId ? `event-${market.eventId}` : null);
-  if(!key) return;
-  if(tradeFetchCache.has(key)) { await tradeFetchCache.get(key); return; }
-  const params = new URLSearchParams();
-  params.set('limit','50');
-  params.set('takerOnly','true');
-  if(market.conditionId) params.set('market', market.conditionId); else if(market.eventId) params.set('eventId', String(market.eventId));
-  const req = fetch(`${TRADES_API_URL}?${params.toString()}`)
-    .then(r => r.ok ? r.json() : [])
-    .then(async trades => {
-      if(!Array.isArray(trades) || !trades.length) return;
-      const cleaned = trades.map(tr => ({ time: asNumber(tr.timestamp, Date.now()), fair: market.fairPrice, price: asNumber(tr.price, market.currentPrice), size: asNumber(tr.size,0) * Math.max(1, asNumber(tr.price, market.currentPrice)), wallet: tr.proxyWallet || '', walletName: displayNameFromTrade(tr), outcome: tr.outcome || market.outcome, side: tr.side || '' }));
-      eventTapes.set(market.tokenId, cleaned);
-      const totals = new Map();
-      for(const tr of cleaned){
-        if(!tr.wallet) continue;
-        const w = createWallet(tr.wallet);
-        if(!w) continue;
-        w.nickname = tr.walletName || w.nickname;
-        w.activity += 1;
-        w.lastSeen = tr.time;
-        totals.set(tr.wallet, (totals.get(tr.wallet) || 0) + tr.size);
-      }
-      const leaders = Array.from(totals.entries()).sort((a,b)=>b[1]-a[1]);
-      if(leaders[0]){
-        market.primaryWallet = leaders[0][0];
-        market.primaryWalletName = createWallet(leaders[0][0])?.nickname || shortWallet(leaders[0][0]);
-      }
-      for(const [wallet,total] of leaders){
-        const w = createWallet(wallet);
-        if(!w) continue;
-        w.score = clamp(w.score + Math.round(total / 10000), 1, 99);
-        const profile = await resolveWalletProfile(wallet);
-        if(profile){
-          w.nickname = profile.userName ? `@${profile.userName}` : (profile.username ? `@${profile.username}` : (profile.name || profile.pseudonym || w.nickname));
-          w.userName = profile.userName || profile.username || '';
-          w.verified = !!profile.verifiedBadge;
-        }
-      }
-      updateWalletRanking();
-      render();
-    }).catch(()=>null);
-  tradeFetchCache.set(key, req);
-  await req;
+markets=[];
+
+events.forEach(e=>{
+if(!e.markets) return;
+
+e.markets.forEach(m=>{
+
+markets.push({
+id:m.id,
+question:m.question,
+condition:m.conditionId
+});
+
+});
+});
+
+renderMarkets();
 }
 
-function updateWalletRanking(){ state.walletRankings = Array.from(walletMap.values()).filter(w=>w && w.wallet).sort((a,b)=>(b.score*1.3+b.activity*.5+b.pnlEdge)-(a.score*1.3+a.activity*.5+a.pnlEdge)).slice(0,12); }
-function pushHistory(tokenId, point){ point.limit = point.limit || 500; const arr = histories.get(tokenId) || []; arr.push(point); while(arr.length>70) arr.shift(); histories.set(tokenId, arr); }
-function pushEvent(tokenId,row){ const arr = eventTapes.get(tokenId) || []; arr.unshift(row); while(arr.length>60) arr.pop(); eventTapes.set(tokenId, arr); }
+function renderMarkets(){
 
-function createMarket(data){
-  const openingPrice = asNumber(data.openingPrice, data.currentPrice);
-  const currentPrice = asNumber(data.currentPrice, openingPrice);
-  const spread = asNumber(data.spread, Math.max(.004, Math.min(.06, currentPrice*.035)));
-  const fairPrice = clamp(currentPrice + Math.min(.02, spread*.55), .01, .99);
-  const walletObj = data.primaryWallet ? createWallet(data.primaryWallet) : null;
-  const m = { id:data.id, tokenId:data.tokenId, market:data.market, category:data.category||'Other', outcome:data.outcome||'YES', openingPrice, currentPrice, previousPrice:openingPrice, fairPrice, fairEdge:(fairPrice-currentPrice)*100, spread, volume24h:asNumber(data.volume24h,0), aggressiveFlowUsd:asNumber(data.aggressiveFlowUsd,0), smartWalletScore:clamp((walletObj?walletObj.score:50)+Math.round(asNumber(data.aggressiveFlowUsd,0)/20000),1,99), primaryWallet:data.primaryWallet||'', primaryWalletName:walletObj?walletObj.nickname:'', walletActivity:1, updatedAt:data.updatedAt||Date.now(), slug:data.slug||'', eventId:data.eventId||null, conditionId:data.conditionId||null, lastTradePrice:currentPrice, whaleCount:asNumber(data.aggressiveFlowUsd,0)>=20000?1:0, firstSeenAt:Date.now(), signal:'Watching', impactLabel:'Low' };
-  return recomputeMarket(m);
-}
-function recomputeMarket(m){
-  m.dropPct = m.openingPrice>0 ? Math.max(0, ((m.openingPrice-m.currentPrice)/m.openingPrice)*100) : 0;
-  m.fairPrice = clamp(m.currentPrice + Math.min(.025, m.spread*.55), .01, .99);
-  m.fairEdge = (m.fairPrice-m.currentPrice)*100;
-  const scoreBase = m.primaryWallet && createWallet(m.primaryWallet) ? createWallet(m.primaryWallet).score : 50;
-  m.smartWalletScore = clamp(Math.round(scoreBase*.65 + Math.min(25,m.aggressiveFlowUsd/5000) + m.whaleCount*8 + m.dropPct*1.7), 1, 99);
-  if(m.whaleCount>=3 || m.smartWalletScore>=85) m.signal='Whale flow'; else if(m.dropPct>=8) m.signal='Fast move'; else if(m.dropPct>=4) m.signal='Pressure'; else if(m.fairEdge>=1.2) m.signal='Smart edge'; else m.signal='Watching';
-  m.impactLabel = m.whaleCount>=3 || m.aggressiveFlowUsd>80000 ? 'High' : m.dropPct>=5 || m.aggressiveFlowUsd>25000 ? 'Medium' : 'Low';
-  return m;
+const el=document.getElementById("markets");
+
+el.innerHTML=markets.map(m=>`
+<div class="row" onclick="selectMarket('${m.condition}')">
+${m.question}
+</div>
+`).join("");
+
 }
 
-function seedFallback(){
-  const raw = [['btc120','Will Bitcoin hit $120k before June 30?','Crypto','YES',0.69,0.58,184200,48210,'bitcoin-120k-before-june-30'],['trumpxi','Will Trump meet Xi before August?','Politics','YES',0.48,0.41,291100,72900,'trump-xi-meeting-before-august'],['fedcut','Will the Fed cut rates by July?','Macro','YES',0.56,0.52,404500,51400,'fed-cut-rates-by-july'],['eth2026','Will Ethereum staking ETF be approved in 2026?','Crypto','NO',0.42,0.36,92200,19850,'eth-staking-etf-2026'],['openai','Will OpenAI launch GPT-6 before 2027?','Tech','YES',0.69,0.61,138800,23100,'openai-gpt6-before-2027'],['lakers','Will the Lakers make the playoffs?','Sports','YES',0.47,0.44,561000,80300,'lakers-make-playoffs']];
-  state.fallbackMarkets = raw.map((x,i)=>{
-    const m = createMarket({ id:x[0], tokenId:`fallback-${x[0]}`, market:x[1], category:x[2], outcome:x[3], openingPrice:x[4], currentPrice:x[5], volume24h:x[6], aggressiveFlowUsd:x[7], slug:x[8], updatedAt:Date.now()-i*30000 });
-    marketByToken.set(m.tokenId,m);
-    for(let t=0;t<28;t++){ const price=clamp(m.openingPrice-((m.openingPrice-m.currentPrice)*(t/27))+(Math.sin(t)*.004),.01,.99); const fair=clamp(price+Math.min(.02,m.spread*.5),.01,.99); const limit=Math.round(500+Math.random()*2500); pushHistory(m.tokenId,{t:Date.now()-(28-t)*360000, price, fair, limit}); }
-    return m;
-  });
+async function selectMarket(id){
+
+selectedMarket=id;
+
+const r=await fetch(TRADES+"?market="+id+"&limit=50");
+const trades=await r.json();
+
+renderTimeline(trades);
+
 }
 
-function pickTokenId(market){ if(Array.isArray(market?.clobTokenIds)&&market.clobTokenIds[0]) return String(market.clobTokenIds[0]); if(typeof market?.clobTokenIds==='string'){ try{ const parsed=JSON.parse(market.clobTokenIds); if(Array.isArray(parsed)&&parsed[0]) return String(parsed[0]); }catch{} } if(Array.isArray(market?.tokenIds)&&market.tokenIds[0]) return String(market.tokenIds[0]); if(Array.isArray(market?.tokens)&&market.tokens[0]?.token_id) return String(market.tokens[0].token_id); return String(market?.token_id || market?.asset_id || market?.id || ''); }
-function pickOutcomeLabel(market){ if(Array.isArray(market?.outcomes)&&market.outcomes[0]) return String(market.outcomes[0]).toUpperCase(); if(Array.isArray(market?.tokens)&&market.tokens[0]?.outcome) return String(market.tokens[0].outcome).toUpperCase(); return 'YES'; }
-function getMarkets(){ return state.markets.length ? state.markets : state.fallbackMarkets; }
-function filteredMarkets(){ let list=[...getMarkets()]; if(state.category!=='all') list=list.filter(x=>x.category===state.category); if(state.side!=='all') list=list.filter(x=>x.outcome===state.side); if(state.search.trim()){ const q=state.search.trim().toLowerCase(); list=list.filter(x=>x.market.toLowerCase().includes(q)||x.category.toLowerCase().includes(q)||(x.primaryWalletName||'').toLowerCase().includes(q)||x.signal.toLowerCase().includes(q)||(x.primaryWallet||'').toLowerCase().includes(q)); } list=list.filter(x=>x.dropPct>=state.minDrop&&x.volume24h>=state.minVolume); if(state.tab==='fast') list=list.filter(x=>x.dropPct>=5); if(state.tab==='whale') list=list.filter(x=>x.whaleCount>=2||x.signal==='Whale flow'); if(state.tab==='smart') list=list.filter(x=>x.smartWalletScore>=70||x.signal==='Smart edge'); if(state.tab==='pressure') list=list.filter(x=>x.signal==='Pressure'||x.signal==='Fast move'); if(state.tab==='history') list=list.filter(x=>(histories.get(x.tokenId)||[]).length>=8); if(state.tab==='tracker'){ const ids=new Set(state.trackedBets.map(b=>b.marketId)); list=list.filter(x=>ids.has(x.id)); } if(state.sort==='drop') list.sort((a,b)=>b.dropPct-a.dropPct); if(state.sort==='recent') list.sort((a,b)=>b.updatedAt-a.updatedAt); if(state.sort==='flow') list.sort((a,b)=>b.aggressiveFlowUsd-a.aggressiveFlowUsd); if(state.sort==='wallet') list.sort((a,b)=>b.smartWalletScore-a.smartWalletScore); if(state.sort==='volume') list.sort((a,b)=>b.volume24h-a.volume24h); return list; }
-function getSelected(){ const list=filteredMarkets(); return list.find(x=>x.id===state.selectedId)||list[0]||null; }
+function renderTimeline(trades){
 
-function renderControls(){
-  document.getElementById('controlsArea').style.display = state.controlsHidden ? 'none' : 'block';
-  document.getElementById('toggleControlsBtn').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls';
-  document.getElementById('streamStatus').textContent = state.liveMode ? 'Polymarket realtime feed' : 'Realtime paused';
-  document.getElementById('eventCounter').textContent = `${state.totalEvents.toLocaleString()} events processed`;
-  document.getElementById('sourceLabel').textContent = state.sourceLabel;
-  document.getElementById('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
-  document.getElementById('searchInput').value = state.search;
-  document.getElementById('liveBtn').textContent = state.liveMode ? 'Live' : 'Paused';
-  document.getElementById('muteBtn').textContent = state.muted ? 'Muted' : 'Mute all';
-  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === state.tab));
-  const cats=['all',...Array.from(new Set(getMarkets().map(x=>x.category))).sort((a,b)=>a.localeCompare(b))];
-  document.getElementById('categorySelect').innerHTML = cats.map(c=>`<option value="${escapeHtml(c)}">${c==='all'?'All categories':escapeHtml(c)}</option>`).join('');
-  document.getElementById('categorySelect').value = state.category; document.getElementById('sideSelect').value = state.side; document.getElementById('sortSelect').value = state.sort; document.getElementById('windowSelect').value = String(state.baselineWindowMs); document.getElementById('minDropSelect').value = String(state.minDrop); document.getElementById('volumeSelect').value = String(state.minVolume);
-  const list=filteredMarkets(); const whales=list.filter(x=>x.signal==='Whale flow').length; const smart=list.filter(x=>x.smartWalletScore>=70).length; const fairPlus=list.filter(x=>x.fairEdge>0).length; document.getElementById('dropStats').textContent=`Drops: ${list.length} · Whale: ${whales} · Smart: ${smart}`; document.getElementById('marketStats').textContent=`Markets: ${getMarkets().length} · Fair edge+: ${fairPlus}`;
-  document.getElementById('errorArea').innerHTML = state.error ? `<div class="notice">${escapeHtml(state.error)}</div>` : '';
+const el=document.getElementById("timeline");
+
+if(!trades.length){
+
+el.innerHTML="No trades yet";
+return;
+
 }
 
-function renderRows(){ const rowsEl=document.getElementById('rows'); const list=filteredMarkets(); const selected=getSelected(); if(selected) state.selectedId=selected.id; if(!list.length){ rowsEl.innerHTML='<div class="row"><div>No matching markets.</div><div></div><div></div><div></div><div class="hide-sm"></div><div class="hide-md"></div><div class="hide-md"></div><div class="hide-sm"></div><div class="hide-sm"></div></div>'; return; }
-  rowsEl.innerHTML=list.map(item=>{ const badgeClass=item.signal==='Whale flow'?'whale':item.signal==='Fast move'?'fast':item.signal==='Pressure'?'pressure':item.signal==='Smart edge'?'smart':''; return `<div class="row ${selected&&selected.id===item.id?'active':''}" data-id="${escapeHtml(item.id)}"><div><div class="market-title">${escapeHtml(item.market)}</div><div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · ${escapeHtml(item.primaryWalletName || (item.primaryWallet ? shortWallet(item.primaryWallet) : 'trace pending'))}</div></div><div>${escapeHtml(item.outcome)}</div><div class="green">${formatAgo(item.updatedAt)}</div><div>${formatProb(item.previousPrice)} <span class="red">→ ${formatProb(item.currentPrice)}</span></div><div class="hide-sm ${item.fairEdge>=0?'green':'red'}">${formatProb(item.fairPrice)}</div><div class="hide-md">${item.dropPct.toFixed(2)}%</div><div class="hide-md">${formatUsd(item.aggressiveFlowUsd)}</div><div class="hide-sm ${item.smartWalletScore>=75?'green':item.smartWalletScore>=55?'yellow':'muted'}">${item.smartWalletScore}</div><div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal)}</span></div></div>`; }).join('');
-  rowsEl.querySelectorAll('.row[data-id]').forEach(el=>el.onclick=()=>{ state.selectedId=el.dataset.id; render(); }); }
+el.innerHTML=trades.map(t=>{
 
-function renderChart(selected){ const box=document.getElementById('chartBox'); if(!selected){ box.innerHTML=''; return; } const pts=histories.get(selected.tokenId)||[]; if(pts.length<2){ box.innerHTML='<div class="tiny" style="padding:12px;">Waiting for more history...</div>'; return; } const w=460,h=230,padX=16,padY=18; const values=[]; pts.forEach(p=>values.push(p.price,p.fair)); const min=Math.min(...values,selected.openingPrice), max=Math.max(...values,selected.openingPrice), range=Math.max(.001,max-min); const mapPoints=(key)=>pts.map((p,i)=>{ const x=padX+(i/Math.max(1,pts.length-1))*(w-padX*2); const y=h-padY-((p[key]-min)/range)*(h-padY*2); return `${x},${y}`; }).join(' '); const pricePoints=mapPoints('price'); const fairPoints=mapPoints('fair'); const limitMax=Math.max(...pts.map(p=>p.limit||0),1); const limitBars=pts.map((p,i)=>{ const x=padX+(i/Math.max(1,pts.length-1))*(w-padX*2); const barH=((p.limit||0)/limitMax)*55; return `<line x1="${x}" y1="${h-4}" x2="${x}" y2="${h-4-barH}" stroke="rgba(246,198,91,0.65)" stroke-width="3" />`; }).join(''); const openingY=h-padY-((selected.openingPrice-min)/range)*(h-padY*2); box.innerHTML=`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${state.chartLines.limit?limitBars:''}${state.chartLines.open?`<line x1="${padX}" y1="${openingY}" x2="${w-padX}" y2="${openingY}" stroke="rgba(57,217,138,0.8)" stroke-width="1.5" stroke-dasharray="4 4" />`:''}${state.chartLines.fair?`<polyline fill="none" stroke="rgba(255,255,255,0.96)" stroke-width="2.2" points="${fairPoints}" />`:''}${state.chartLines.price?`<polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${pricePoints}" />`:''}</svg>`; document.querySelectorAll('#chartLegendControls .toggle-line').forEach(el=>el.classList.toggle('active', !!state.chartLines[el.dataset.line])); }
+const wallet=t.proxyWallet||t.wallet||"";
 
-function renderDetail(){
-  const selected=getSelected(); const detail=document.getElementById('detailPane'); const eventRows=document.getElementById('eventRows'); const walletRows=document.getElementById('walletRows');
-  if(!selected){ detail.innerHTML='<div class="tiny">Select a market from the feed.</div>'; eventRows.innerHTML=''; walletRows.innerHTML=''; return; }
-  const traceKey=selected.conditionId||(selected.eventId?`event-${selected.eventId}`:selected.id); if(state.selectedTraceKey!==traceKey){ state.selectedTraceKey=traceKey; ensureRealTraceForMarket(selected); }
-  const primaryWalletObj = selected.primaryWallet ? createWallet(selected.primaryWallet) : null;
-  detail.innerHTML=`<div class="detail-title">${escapeHtml(selected.market)}</div><div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge">${escapeHtml(selected.category)}</span><span class="badge">${escapeHtml(selected.outcome)}</span><span class="badge ${selected.signal==='Whale flow'?'whale':selected.signal==='Fast move'?'fast':selected.signal==='Pressure'?'pressure':selected.signal==='Smart edge'?'smart':''}">${escapeHtml(selected.signal)}</span></div><div class="detail-grid" style="margin-top:10px;"><div class="detail-box"><div class="k">Opening price</div><div class="v">${formatOdds(selected.openingPrice)}</div><div class="tiny">${formatProb(selected.openingPrice)}</div></div><div class="detail-box"><div class="k">Current price</div><div class="v">${formatOdds(selected.currentPrice)}</div><div class="tiny">${formatProb(selected.currentPrice)}</div></div><div class="detail-box"><div class="k">Fair price</div><div class="v">${formatOdds(selected.fairPrice)}</div><div class="tiny">${formatProb(selected.fairPrice)}</div></div><div class="detail-box"><div class="k">Primary wallet</div><div class="v" style="font-size:15px; line-height:1.4;">${primaryWalletObj ? `<a class="link-wallet" target="_blank" rel="noreferrer" href="${profileHref(primaryWalletObj)}">${escapeHtml(primaryWalletObj.nickname || shortWallet(selected.primaryWallet))}</a>` : '<span class="tiny">Waiting for trade trace...</span>'}</div><div class="tiny">${escapeHtml(selected.primaryWallet || '')}</div></div></div><div class="tiny" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">Market link: ${selected.slug ? `<a target="_blank" rel="noreferrer" href="https://polymarket.com/event/${selected.slug}">open on Polymarket</a>` : 'n/a'} ${['Sports','Football','Basketball','Tennis','Baseball','Hockey','American Football','Soccer'].includes(selected.category) ? `· <a target="_blank" rel="noreferrer" href="https://www.oddsportal.com/search/results/${encodeURIComponent(selected.market)}/">open on OddsPortal</a>` : ''}</div>`;
-  renderChart(selected);
-  const tape=eventTapes.get(selected.tokenId)||[];
-  eventRows.innerHTML = tape.length ? tape.slice(0,24).map(ev=>{ const walletObj=ev.wallet?createWallet(ev.wallet):null; const href=walletObj?profileHref(walletObj):'#'; const label=walletObj?(walletObj.nickname || shortWallet(ev.wallet)):(ev.wallet?shortWallet(ev.wallet):''); return `<div class="mini-row"><div>${formatTime(ev.time)}</div><div>${formatOdds(ev.fair)} <span class="tiny">${formatProb(ev.fair)}</span></div><div>${formatOdds(ev.price)} <span class="tiny">${formatProb(ev.price)}</span></div><div>${formatUsd(ev.size)}</div><div class="hide-evt-md">${ev.wallet ? `<a class="link-wallet" target="_blank" rel="noreferrer" href="${href}">${escapeHtml(label)}</a><div class="tiny">${escapeHtml(ev.wallet)}</div>` : '<span class="tiny">Loading trace…</span>'}</div></div>`; }).join('') : '<div class="mini-row"><div class="tiny">Loading trade trace…</div><div></div><div></div><div></div><div class="hide-evt-md"></div></div>';
-  walletRows.innerHTML = state.walletRankings.filter(w=>w&&w.wallet).slice(0,8).map(w=>`<div class="mini-row"><div><a class="link-wallet" target="_blank" rel="noreferrer" href="${profileHref(w)}">${escapeHtml(w.nickname || shortWallet(w.wallet))}</a><div class="tiny">${escapeHtml(w.wallet)}</div></div><div>${w.score}</div><div class="${w.pnlEdge>=0?'green':'red'}">${w.pnlEdge.toFixed(1)}%</div><div class="hide-wallet-sm">${w.activity}</div></div>`).join('') || '<div class="mini-row"><div class="tiny">Wallet trace data will appear after trade history loads.</div><div></div><div></div><div class="hide-wallet-sm"></div></div>';
-  document.getElementById('kpiOpening').textContent=formatOdds(selected.openingPrice); document.getElementById('kpiCurrent').textContent=formatOdds(selected.currentPrice); document.getElementById('kpiEdge').textContent=`${selected.fairEdge.toFixed(1)}%`; document.getElementById('kpiSpread').textContent=`${(selected.spread*100).toFixed(2)}%`; document.getElementById('kpiFlow').textContent=formatUsd(selected.aggressiveFlowUsd); document.getElementById('kpiWallet').textContent=selected.smartWalletScore;
+const walletLink=wallet
+?`<a class="wallet" target="_blank" href="https://polymarket.com/profile/${wallet}">
+${wallet}
+</a>`
+:"";
+
+return`
+
+<div class="timeline-row">
+
+<div>${new Date(t.timestamp).toLocaleString()}</div>
+
+<div>${(1/t.price).toFixed(2)}</div>
+
+<div>${(t.price*100).toFixed(1)}%</div>
+
+<div>$${(t.size*t.price).toFixed(0)}</div>
+
+<div>${walletLink}</div>
+
+</div>
+
+`;
+
+}).join("");
+
 }
 
-function renderTrackedBets(){ const box=document.getElementById('trackedBetsList'); if(!state.trackedBets.length){ box.innerHTML='<div class="tiny">No markets logged yet.</div>'; return; } box.innerHTML=state.trackedBets.slice().reverse().map(b=>`<div class="tracker-item"><div style="font-weight:700; font-size:13px; line-height:1.4;">${escapeHtml(b.market)}</div><div class="tiny" style="margin-top:4px;">${escapeHtml(b.category)} · ${escapeHtml(b.outcome)} · logged ${formatAgo(b.loggedAt)}</div><div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge">Stake: ${escapeHtml(b.stake || 'N/A')}</span><span class="badge">Entry: ${escapeHtml(b.entryOdds || '—')}</span><span class="badge">Fair: ${escapeHtml(b.fairOdds || '—')}</span><span class="badge ${Number(b.liveEdge||0)>=0?'smart':'fast'}">Edge: ${escapeHtml(b.liveEdgeLabel || '—')}</span>${b.tags ? `<span class="badge">${escapeHtml(b.tags)}</span>` : ''}</div>${b.notes ? `<div class="tiny" style="margin-top:8px;">${escapeHtml(b.notes)}</div>` : ''}</div>`).join(''); }
-function render(){ renderControls(); renderRows(); renderDetail(); renderTrackedBets(); }
-function resetBaselineWindow(){ getMarkets().forEach(m=>{ m.openingPrice=m.currentPrice; m.previousPrice=m.currentPrice; recomputeMarket(m); }); render(); }
+loadMarkets();
 
-async function bootstrap(){
-  seedFallback(); render();
-  try{
-    const res = await fetch(GAMMA_EVENTS_URL); const events = await res.json(); const loaded=[];
-    for(const eventItem of (Array.isArray(events)?events:[])){
-      for(const market of (Array.isArray(eventItem?.markets)?eventItem.markets:[])){
-        const tokenId = pickTokenId(market); if(!tokenId) continue;
-        const currentPrice = asNumber(market?.lastTradePrice ?? market?.last_trade_price ?? market?.bestBid ?? market?.price ?? market?.outcomePrice, 0);
-        const openingPrice = currentPrice || (Math.random()*.7 + .15);
-        const m = createMarket({ id:String(market?.id || market?.slug || tokenId), tokenId, market:market?.question || eventItem?.title || 'Untitled market', category:eventItem?.category || market?.category || market?.groupItemTitle || market?.seriesSlug || 'Other', outcome:pickOutcomeLabel(market), eventId:eventItem?.id || null, conditionId:market?.conditionId || market?.condition_id || null, openingPrice, currentPrice, volume24h:asNumber(market?.volume24hr ?? market?.volume24h ?? market?.volume24Hr ?? market?.volume, 0), aggressiveFlowUsd:0, spread:Math.max(.004, asNumber(market?.bestAsk,currentPrice)-asNumber(market?.bestBid,currentPrice)), slug:market?.slug || eventItem?.slug || '', updatedAt:Date.now() });
-        loaded.push(m); marketByToken.set(tokenId,m);
-        for(let i=0;i<22;i++){ const price=clamp(openingPrice+(Math.random()*.02-.01),.01,.99); const fair=clamp(price+Math.min(.02,m.spread*.5),.01,.99); const limit=Math.round(500+Math.random()*2500); pushHistory(tokenId,{t:Date.now()-(22-i)*120000, price, fair, limit}); }
-      }
-    }
-    if(loaded.length){ state.markets = loaded.slice(0,220); state.selectedId = state.markets[0]?.id || state.selectedId; state.sourceLabel='Live metadata from Polymarket Gamma API'; state.lastSync=Date.now(); state.error=''; render(); }
-  }catch(e){ state.sourceLabel='Fallback market intelligence mode'; state.error='Live market metadata could not be loaded. Running in fallback mode.'; render(); }
-  openSocket(); if(baselineTimer) clearInterval(baselineTimer); baselineTimer = setInterval(resetBaselineWindow, state.baselineWindowMs);
-}
-
-function openSocket(){
-  if(!state.liveMode) return; const tokenIds=getMarkets().map(x=>x.tokenId).filter(Boolean).slice(0,120); if(!tokenIds.length) return; if(ws) ws.close();
-  ws = new WebSocket(MARKET_WS_URL);
-  ws.onopen = ()=>{ state.error=''; render(); ws.send(JSON.stringify({ assets_ids: tokenIds, type:'market', custom_feature_enabled:true })); };
-  ws.onerror = ()=>{ state.error='WebSocket disconnected. The terminal still works, but live updates paused.'; render(); };
-  ws.onclose = ()=>render();
-  ws.onmessage = event => {
-    try{
-      const payload=JSON.parse(event.data); const rows=Array.isArray(payload)?payload:[payload]; state.totalEvents += rows.length;
-      for(const message of rows){ if(!message) continue;
-        if(message.event_type==='price_change' && Array.isArray(message.price_changes)){
-          for(const pc of message.price_changes){ const tokenId=String(pc.asset_id || ''); const m=marketByToken.get(tokenId); if(!m) continue; const bestBid=asNumber(pc.best_bid,m.currentPrice); const bestAsk=asNumber(pc.best_ask,m.currentPrice); const px=asNumber(pc.price,m.currentPrice); const midpoint=bestBid&&bestAsk&&bestAsk<1 ? (bestBid+bestAsk)/2 : px; const size=Math.max(0, asNumber(pc.size,0) * (midpoint || px || m.currentPrice || 0)); m.previousPrice=m.currentPrice; m.currentPrice=midpoint || px || m.currentPrice; m.lastTradePrice=px || m.lastTradePrice; m.spread=Math.max(.002,bestAsk-bestBid); m.aggressiveFlowUsd += size; if(size>=9000) m.whaleCount += 1; m.updatedAt=Date.now(); recomputeMarket(m); pushHistory(tokenId,{t:Date.now(), price:m.currentPrice, fair:m.fairPrice, limit:Math.round(size || 500)}); pushEvent(tokenId,{ time:Date.now(), fair:m.fairPrice, price:m.currentPrice, size:Math.round(size || 500), wallet:m.primaryWallet || '', walletName:m.primaryWalletName || '' }); }
-        }
-        if(message.event_type==='last_trade_price'){ const tokenId=String(message.asset_id || ''); const m=marketByToken.get(tokenId); if(!m) continue; m.previousPrice=m.currentPrice; m.currentPrice=asNumber(message.price,m.currentPrice); m.lastTradePrice=m.currentPrice; m.updatedAt=Date.now(); recomputeMarket(m); pushHistory(tokenId,{t:Date.now(), price:m.currentPrice, fair:m.fairPrice, limit:500}); }
-        if(message.event_type==='book'){ const tokenId=String(message.asset_id || ''); const m=marketByToken.get(tokenId); if(!m) continue; const bids=Array.isArray(message.bids)?message.bids:[]; const asks=Array.isArray(message.asks)?message.asks:[]; const bestBid=bids.length?asNumber(bids[bids.length-1]?.price,m.currentPrice):m.currentPrice; const bestAsk=asks.length?asNumber(asks[0]?.price,m.currentPrice):m.currentPrice; const midpoint=bestBid&&bestAsk?(bestBid+bestAsk)/2:m.currentPrice; m.previousPrice=m.currentPrice; m.currentPrice=midpoint || m.currentPrice; m.spread=Math.max(.002,bestAsk-bestBid); m.updatedAt=Date.now(); recomputeMarket(m); pushHistory(tokenId,{t:Date.now(), price:m.currentPrice, fair:m.fairPrice, limit:1000}); }
-      }
-      state.lastSync=Date.now(); render();
-    }catch{}
-  };
-}
-
-document.getElementById('searchInput').addEventListener('input', e=>{ state.search=e.target.value; render(); });
-document.getElementById('categorySelect').addEventListener('change', e=>{ state.category=e.target.value; render(); });
-document.getElementById('sideSelect').addEventListener('change', e=>{ state.side=e.target.value; render(); });
-document.getElementById('sortSelect').addEventListener('change', e=>{ state.sort=e.target.value; render(); });
-document.getElementById('windowSelect').addEventListener('change', e=>{ state.baselineWindowMs=asNumber(e.target.value,300000); if(baselineTimer) clearInterval(baselineTimer); baselineTimer=setInterval(resetBaselineWindow,state.baselineWindowMs); resetBaselineWindow(); });
-document.getElementById('minDropSelect').addEventListener('change', e=>{ state.minDrop=asNumber(e.target.value,3); render(); });
-document.getElementById('volumeSelect').addEventListener('change', e=>{ state.minVolume=asNumber(e.target.value,0); render(); });
-document.querySelectorAll('.tab').forEach(el=>el.addEventListener('click', ()=>{ state.tab=el.dataset.tab; render(); }));
-document.getElementById('toggleControlsBtn').addEventListener('click', ()=>{ state.controlsHidden=!state.controlsHidden; render(); });
-document.getElementById('muteBtn').addEventListener('click', ()=>{ state.muted=!state.muted; render(); });
-document.getElementById('alertsBtn').addEventListener('click', ()=>alert('Alert configuration belongs in the backend build.'));
-document.getElementById('chartLogBtn').addEventListener('click', ()=>openBetTrackerModal());
-document.getElementById('openBetTrackerBtn').addEventListener('click', ()=>openBetTrackerModal());
-document.getElementById('betModalCancel').addEventListener('click', ()=>closeBetTrackerModal());
-document.getElementById('betModalSave').addEventListener('click', ()=>saveTrackedBet());
-document.getElementById('betModalBackdrop').addEventListener('click', e=>{ if(e.target.id==='betModalBackdrop') closeBetTrackerModal(); });
-document.getElementById('chartLegendControls').addEventListener('click', e=>{ const el=e.target.closest('.toggle-line'); if(!el) return; const key=el.dataset.line; state.chartLines[key]=!state.chartLines[key]; renderDetail(); });
-document.getElementById('liveBtn').addEventListener('click', ()=>{ state.liveMode=!state.liveMode; if(!state.liveMode && ws) ws.close(); if(state.liveMode) openSocket(); render(); });
-
-function openBetTrackerModal(){ const selected=getSelected(); if(!selected) return; state.activeModal=true; document.getElementById('betModalBackdrop').style.display='flex'; document.getElementById('betModalSubtitle').textContent=`${selected.market} · ${selected.category} · ${selected.outcome}`; document.getElementById('betStakeInput').value=''; document.getElementById('betEdgeInput').value=`${selected.fairEdge>=0?'+':''}${selected.fairEdge.toFixed(2)}%`; document.getElementById('betOddsInput').value=formatOdds(selected.currentPrice); document.getElementById('betFairOddsInput').value=formatOdds(selected.fairPrice); document.getElementById('betTagsInput').value=''; document.getElementById('betNotesInput').value=''; }
-function closeBetTrackerModal(){ state.activeModal=false; document.getElementById('betModalBackdrop').style.display='none'; }
-function saveTrackedBet(){ const selected=getSelected(); if(!selected) return; state.trackedBets.push({ marketId:selected.id, market:selected.market, category:selected.category, outcome:selected.outcome, stake:document.getElementById('betStakeInput').value.trim(), entryOdds:formatOdds(selected.currentPrice), fairOdds:formatOdds(selected.fairPrice), liveEdge:selected.fairEdge, liveEdgeLabel:`${selected.fairEdge>=0?'+':''}${selected.fairEdge.toFixed(2)}%`, tags:document.getElementById('betTagsInput').value.trim(), notes:document.getElementById('betNotesInput').value.trim(), loggedAt:Date.now() }); closeBetTrackerModal(); state.tab='tracker'; render(); }
-
-bootstrap();
 </script>
+
 </body>
 </html>
