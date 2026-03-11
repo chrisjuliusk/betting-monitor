@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Betting Monitr</title>
+  <title>Betting Monitor</title>
   <style>
     :root{
       --bg:#05070b;
@@ -76,15 +76,6 @@
       padding:8px 10px
     }
     .btn{cursor:pointer}
-    .btn.primary{
-      background:#17365f;
-      border-color:rgba(98,169,255,.35)
-    }
-    .btn.live{
-      background:rgba(57,217,138,.1);
-      color:#d4ffea;
-      border-color:rgba(57,217,138,.28)
-    }
     .tab{cursor:pointer}
     .tab.active{
       background:#162338;
@@ -378,9 +369,9 @@
       </select>
       <select id="volumeSelect" class="field">
         <option value="0">Any volume</option>
-        <option value="5000">Vol > $5k</option>
-        <option value="25000">Vol > $25k</option>
-        <option value="100000">Vol > $100k</option>
+        <option value="5000">Vol &gt; $5k</option>
+        <option value="25000">Vol &gt; $25k</option>
+        <option value="100000">Vol &gt; $100k</option>
       </select>
     </div>
 
@@ -678,6 +669,7 @@ function renderRows() {
     el.onclick = async () => {
       state.selectedId = el.dataset.id;
       await loadTimeline();
+      await loadWallets();
       render();
     };
   });
@@ -814,8 +806,8 @@ function render() {
 async function init() {
   try {
     await loadMarkets();
-    await loadWallets();
     await loadTimeline();
+    await loadWallets();
     render();
   } catch (e) {
     state.error = 'Backend not connected or backend returned no data.';
