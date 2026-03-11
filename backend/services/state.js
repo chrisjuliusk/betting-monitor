@@ -12,7 +12,8 @@ export function upsertWallet(wallet, patch = {}) {
     nickname: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
     activity: 0,
     score: 50,
-    pnlEdge: 0
+    pnlEdge: 0,
+    profileUrl: `https://polymarket.com/profile/${wallet}`
   };
 
   const next = { ...current, ...patch };
