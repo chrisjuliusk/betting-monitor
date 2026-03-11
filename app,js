@@ -1,1 +1,252 @@
+const state = {
+  rows: [],
+  selected: null,
+};
 
+const els = {
+  backendUrl: document.getElementById('backendUrl'),
+  windowSelect: document.getElementById('windowSelect'),
+  minScore: document.getElementById('minScore'),
+  minDrop: document.getElementById('minDrop'),
+  search: document.getElementById('search'),
+  refreshBtn: document.getElementById('refreshBtn'),
+  feedBody: document.getElementById('feedBody'),
+  rowsKpi: document.getElementById('rowsKpi'),
+  whalesKpi: document.getElementById('whalesKpi'),
+  scoreKpi: document.getElementById('scoreKpi'),
+  refreshKpi: document.getElementById('refreshKpi'),
+  detailsTitle: document.getElementById('detailsTitle'),
+  detailsMeta: document.getElementById('detailsMeta'),
+  bids: document.getElementById('bids'),
+  asks: document.getElementById('asks'),
+  tradesList: document.getElementById('tradesList'),
+  detailChart: document.getElementById('detailChart'),
+};
+
+els.refreshBtn.addEventListener('click', loadFeed);
+els.search.addEventListener('input', renderFeed);
+els.minScore.addEventListener('input', renderFeed);
+els.minDrop.addEventListener('input', renderFeed);
+els.windowSelect.addEventListener('change', loadFeed);
+
+async function loadFeed() {
+  const base = els.backendUrl.value.replace(/\/$/, '');
+  const window = els.windowSelect.value;
+  const url = `${base}/api/markets?window=${encodeURIComponent(window)}&limit=200`;
+
+  els.feedBody.innerHTML = `<tr><td colspan="10" class="muted">Loading…</td></tr>`;
+
+  const response = await fetch(url);
+  const payload = await response.json();
+
+  state.rows = payload.data || [];
+  renderFeed();
+  updateStats();
+
+  if (state.rows[0]) {
+    await selectRow(state.rows[0]);
+  }
+}
+
+function renderFeed() {
+  const minScore = Number(els.minScore.value || 0);
+  const minDrop = Number(els.minDrop.value || 0);
+  const search = els.search.value.trim().toLowerCase();
+
+  const rows = state.rows.filter((row) => {
+    const text = `${row.title} ${row.outcome} ${row.category}`.toLowerCase();
+    return row.signal.score >= minScore
+      && row.analysis.windowDropPct >= minDrop
+      && (!search || text.includes(search));
+  });
+
+  els.feedBody.innerHTML = rows.map((row) => {
+    const flow = row.trades
+      .slice(0, 3)
+      .map((trade) => `${trade.side === 'BUY' ? 'B' : 'S'} ${trade.label}`)
+      .join(' · ');
+
+    return `
+      <tr data-condition="${row.conditionId}" data-token="${row.tokenId}">
+        <td class="market-cell">
+          <div><strong>${escapeHtml(row.title)}</strong></div>
+          <div class="muted">${escapeHtml(row.outcome)} · ${escapeHtml(row.category || 'market')}</div>
+        </td>
+        <td>${fmtPct(row.currentPrice)}</td>
+        <td class="bad">-${row.analysis.tickDropPct.toFixed(2)}%</td>
+        <td class="bad">-${row.analysis.windowDropPct.toFixed(2)}%</td>
+        <td class="bad">-${row.analysis.openingDropPct.toFixed(2)}%</td>
+        <td class="bad">-${row.analysis.peakToCurrentPct.toFixed(2)}%</td>
+        <td class="${scoreClass(row.signal.score)}">${row.signal.score} ${row.signal.label}</td>
+        <td><span class="badge">${escapeHtml(row.signal.type)}</span></td>
+        <td class="whale">${row.whale.whaleFlag ? `${row.whale.whaleType} ${row.whale.whaleScore}` : '-'}</td>
+        <td class="muted">${escapeHtml(flow || '-')}</td>
+      </tr>
+    `;
+  }).join('');
+
+  [...els.feedBody.querySelectorAll('tr')].forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const row = state.rows.find(
+        (item) => item.conditionId === tr.dataset.condition && item.tokenId === tr.dataset.token,
+      );
+      if (row) selectRow(row);
+    });
+  });
+
+  els.rowsKpi.textContent = String(rows.length);
+}
+
+async function selectRow(row) {
+  state.selected = row;
+
+  els.detailsTitle.textContent = row.title;
+  els.detailsMeta.textContent = `${row.outcome} · score ${row.signal.score} · whale ${row.whale.whaleType}`;
+
+  renderOrderBook(row.orderbook);
+  renderTrades(row.trades);
+  drawChart(row.chart, row.analysis);
+
+  try {
+    const base = els.backendUrl.value.replace(/\/$/, '');
+    const url = `${base}/api/market/${encodeURIComponent(row.conditionId)}/details?tokenId=${encodeURIComponent(row.tokenId)}`;
+    const response = await fetch(url);
+    const payload = await response.json();
+
+    renderOrderBook(payload.orderbook || row.orderbook);
+    renderTrades(payload.trades || row.trades);
+    drawChart(payload.chart || row.chart, payload.analysis || row.analysis);
+  } catch {
+  }
+}
+
+function renderOrderBook(book = {}) {
+  els.bids.innerHTML = (book.bids || []).map(levelTemplate).join('') || '<div class="muted">No bids</div>';
+  els.asks.innerHTML = (book.asks || []).map(levelTemplate).join('') || '<div class="muted">No asks</div>';
+}
+
+function levelTemplate(level) {
+  return `<div class="level"><span>${fmtPct(level.price)}</span><span>${fmtUsd(level.size)}</span></div>`;
+}
+
+function renderTrades(trades = []) {
+  els.tradesList.innerHTML = trades.slice(0, 14).map((trade) => `
+    <div class="trade-row mono">
+      <span class="${trade.side === 'BUY' ? 'good' : 'bad'}">${trade.side}</span>
+      <span>${timeOnly(trade.timestamp)}</span>
+      <span>${escapeHtml(trade.label || shortWallet(trade.proxyWallet))}</span>
+      <span>${fmtPct(trade.price)}</span>
+      <span>${fmtUsd(trade.size)}</span>
+    </div>
+  `).join('') || '<div class="muted">No trades</div>';
+}
+
+function drawChart(chart = [], analysis = null) {
+  const canvas = els.detailChart;
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = '#08111a';
+  ctx.fillRect(0, 0, width, height);
+
+  if (!Array.isArray(chart) || chart.length < 2) return;
+
+  const points = chart.map((point) => ({
+    x: Number(point.t),
+    y: Number(point.p),
+  }));
+
+  const minX = points[0].x;
+  const maxX = points[points.length - 1].x;
+  const minY = Math.min(...points.map((p) => p.y));
+  const maxY = Math.max(...points.map((p) => p.y));
+
+  const pad = 16;
+  const px = (x) => pad + ((x - minX) / Math.max(1, maxX - minX)) * (width - pad * 2);
+  const py = (y) => height - pad - ((y - minY) / Math.max(0.0001, maxY - minY)) * (height - pad * 2);
+
+  ctx.strokeStyle = '#2a4158';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i += 1) {
+    const y = pad + ((height - pad * 2) / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(width - pad, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#66b6ff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const x = px(point.x);
+    const y = py(point.y);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  if (analysis?.localHighTs) {
+    dot(ctx, px(analysis.localHighTs), py(analysis.localHighPrice), '#ffd46a');
+  }
+  if (analysis?.localLowTs) {
+    dot(ctx, px(analysis.localLowTs), py(analysis.localLowPrice), '#ff7e7e');
+  }
+
+  const last = points[points.length - 1];
+  dot(ctx, px(last.x), py(last.y), '#83f7b8');
+}
+
+function dot(ctx, x, y, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function updateStats() {
+  const rows = state.rows;
+  const whales = rows.filter((row) => row.whale?.whaleFlag).length;
+  const avgScore = rows.length ? rows.reduce((sum, row) => sum + row.signal.score, 0) / rows.length : 0;
+
+  els.whalesKpi.textContent = String(whales);
+  els.scoreKpi.textContent = avgScore.toFixed(1);
+  els.refreshKpi.textContent = new Date().toLocaleTimeString();
+}
+
+function fmtPct(value) {
+  return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
+
+function fmtUsd(value) {
+  return `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function scoreClass(score) {
+  if (score >= 65) return 'score-a';
+  if (score >= 50) return 'score-b';
+  return 'score-c';
+}
+
+function shortWallet(address = '') {
+  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'unknown';
+}
+
+function timeOnly(ts) {
+  return ts ? new Date(Number(ts)).toLocaleTimeString() : '-';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+loadFeed().catch((error) => {
+  els.feedBody.innerHTML = `<tr><td colspan="10" class="bad">${escapeHtml(error.message)}</td></tr>`;
+});
