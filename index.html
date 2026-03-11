@@ -1,819 +1,970 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Polymarket Terminal Monitor</title>
+  <title>Betting Monitor</title>
   <style>
     :root{
-      --bg:#04080d;
-      --panel:#08111a;
-      --panel2:#0d1622;
-      --line:#16314b;
-      --line2:#102433;
-      --text:#d9e8f6;
-      --muted:#7f95aa;
-      --blue:#66b6ff;
-      --green:#82f3b7;
-      --yellow:#ffd76c;
-      --red:#ff7f7f;
+      --bg:#05070b;
+      --panel:#0d1118;
+      --panel2:#111827;
+      --line:rgba(255,255,255,.08);
+      --line2:rgba(94,169,255,.2);
+      --text:#edf2ff;
+      --muted:rgba(237,242,255,.56);
+      --green:#39d98a;
+      --red:#ff6f7f;
+      --blue:#62a9ff;
+      --yellow:#f6c65b;
+      --white:#fff;
     }
+
     *{box-sizing:border-box}
     html,body{
       margin:0;
       padding:0;
       background:var(--bg);
       color:var(--text);
-      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-family:Inter,Arial,sans-serif;
     }
-    body{min-height:100vh}
-    .app{padding:12px}
+
+    body{
+      min-height:100vh;
+      background-image:
+        radial-gradient(circle at top right,rgba(58,95,255,.18),transparent 28%),
+        radial-gradient(circle at top left,rgba(255,255,255,.05),transparent 18%);
+    }
+
     .topbar{
-      display:grid;
-      grid-template-columns:320px 110px 110px 110px 1fr 120px;
-      gap:10px;
-      margin-bottom:12px;
-    }
-    .topbar input,.topbar select,.topbar button{
-      height:38px;
-      border-radius:10px;
-      border:1px solid var(--line);
-      background:linear-gradient(180deg,#07111a,#0b141f);
-      color:var(--text);
-      padding:0 12px;
-      font-size:13px;
-      outline:none;
-    }
-    .topbar button{cursor:pointer;font-weight:700}
-    .statusbar{
-      margin-bottom:12px;
-      padding:10px 12px;
-      border:1px solid var(--line);
-      background:linear-gradient(180deg,#07111a,#0b141f);
-      border-radius:12px;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .stats{
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:10px;
-      margin-bottom:12px;
-    }
-    .card{
-      background:linear-gradient(180deg,var(--panel),var(--panel2));
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px;
-    }
-    .kpi-label{
-      font-size:12px;
-      color:var(--muted);
-      margin-bottom:6px;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .kpi-value{
-      font-size:24px;
-      font-weight:800;
-      line-height:1;
-    }
-    .layout{
-      display:grid;
-      grid-template-columns:2fr 1fr;
-      gap:12px;
-      align-items:start;
-    }
-    .headline{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:8px;
-      margin-bottom:10px;
-    }
-    .headline strong{font-size:20px}
-    .muted{color:var(--muted)}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-    .bad{color:var(--red)}
-    .good{color:var(--green)}
-    .whale{color:var(--blue);font-weight:700}
-    .score-a{color:var(--green);font-weight:700}
-    .score-b{color:var(--yellow);font-weight:700}
-    .score-c{color:var(--red);font-weight:700}
-    .feed-wrap{
-      border:1px solid var(--line2);
-      border-radius:12px;
-      overflow:auto;
-      max-height:76vh;
-      background:#07111a;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:12px;
-    }
-    thead{
+      gap:14px;
+      padding:10px 16px;
+      border-bottom:1px solid var(--line);
+      background:rgba(5,7,11,.9);
       position:sticky;
       top:0;
-      z-index:2;
-      background:#08111a;
+      z-index:50;
+      backdrop-filter:blur(14px);
     }
-    th,td{
-      text-align:left;
-      padding:8px 8px;
-      border-bottom:1px solid rgba(255,255,255,.05);
-      vertical-align:middle;
-      white-space:nowrap;
+
+    .left-top,.right-top,.tabs,.filters,.metrics,.legend{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
     }
-    th{
-      color:#b8cbdd;
-      font-size:11px;
-      letter-spacing:.03em;
+
+    .brand-title{
+      font-size:14px;
+      font-weight:700;
+      letter-spacing:.18em;
       text-transform:uppercase;
     }
-    tbody tr{cursor:pointer}
-    tbody tr:hover{background:rgba(102,182,255,.08)}
-    .market-cell{
-      min-width:320px;
-      max-width:460px;
-      white-space:normal;
-      line-height:1.25;
+
+    .sub,.tiny{
+      font-size:12px;
+      color:var(--muted);
     }
+
+    .dot{
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      display:inline-block;
+      margin-right:8px;
+      background:var(--green);
+      box-shadow:0 0 10px rgba(57,217,138,.8);
+    }
+
+    .btn,.tab,.field,.pill{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      border-radius:6px;
+      font-size:12px;
+      padding:8px 10px;
+    }
+
+    .btn,.tab{cursor:pointer}
+
+    .tab.active{
+      background:#162338;
+      border-color:var(--line2);
+    }
+
+    .field{
+      background:rgba(0,0,0,.25);
+    }
+
+    .field.search{
+      min-width:220px;
+    }
+
+    .controls{
+      padding:10px 16px 8px;
+      border-bottom:1px solid var(--line);
+      background:rgba(9,12,18,.95);
+      position:sticky;
+      top:46px;
+      z-index:40;
+      backdrop-filter:blur(12px);
+    }
+
+    .filters,.metrics{
+      margin-top:8px;
+    }
+
+    .pill{
+      color:var(--muted);
+    }
+
+    .notice{
+      margin-top:8px;
+      padding:10px 12px;
+      border-radius:8px;
+      background:rgba(255,111,127,.08);
+      color:#ffdce1;
+      border:1px solid rgba(255,111,127,.18);
+      font-size:12px;
+      white-space:pre-wrap;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:1.9fr 1.05fr;
+      min-height:calc(100vh - 110px);
+    }
+
+    .feed{
+      border-right:1px solid var(--line);
+    }
+
+    .sidebar{
+      background:rgba(255,255,255,.02);
+    }
+
+    .thead,.row{
+      display:grid;
+      grid-template-columns:2.5fr .65fr .95fr 1fr .95fr .9fr .95fr .75fr .95fr;
+      gap:10px;
+      align-items:center;
+    }
+
+    .thead{
+      position:sticky;
+      top:108px;
+      z-index:10;
+      background:#080b10;
+      border-bottom:1px solid var(--line);
+      padding:10px 14px;
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.16em;
+      color:rgba(255,255,255,.44);
+    }
+
+    .rows{
+      max-height:calc(100vh - 148px);
+      overflow:auto;
+    }
+
+    .row{
+      padding:10px 14px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background:rgba(0,0,0,.06);
+      cursor:pointer;
+      font-size:12px;
+    }
+
+    .row:nth-child(2n){
+      background:rgba(10,16,26,.7);
+    }
+
+    .row:hover,.row.active{
+      background:rgba(26,42,74,.78);
+    }
+
     .market-title{
+      font-size:13px;
       font-weight:700;
-      margin-bottom:3px;
+      line-height:1.35;
     }
+
+    .market-meta{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:11px;
+    }
+
     .badge{
       display:inline-flex;
       align-items:center;
-      border:1px solid var(--line);
-      padding:2px 8px;
+      gap:6px;
+      padding:4px 8px;
       border-radius:999px;
       font-size:10px;
-      text-transform:uppercase;
-      color:#d2e2f1;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
     }
-    .panel-stack{
+
+    .badge.fast{
+      color:#ffd8de;
+      background:rgba(255,111,127,.1);
+      border-color:rgba(255,111,127,.18);
+    }
+
+    .badge.watch{
+      color:#d3deff;
+      background:rgba(98,169,255,.1);
+      border-color:rgba(98,169,255,.18);
+    }
+
+    .green{color:var(--green)}
+    .red{color:var(--red)}
+    .yellow{color:var(--yellow)}
+    .muted{color:var(--muted)}
+
+    .side-wrap{
       display:grid;
-      gap:12px;
+      gap:10px;
+      padding:12px;
     }
-    .chart-wrap{
-      width:100%;
+
+    .side-card{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.035);
+      border-radius:8px;
+      padding:12px;
+    }
+
+    .side-title{
+      font-size:11px;
+      color:rgba(255,255,255,.44);
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+
+    .detail-title{
+      font-size:18px;
+      font-weight:700;
+      line-height:1.4;
+    }
+
+    .detail-grid,.kpi-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+
+    .detail-box,.kpi{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.22);
+      border-radius:8px;
+      padding:10px;
+    }
+
+    .detail-box .k,.kpi .k{
+      font-size:10px;
+      color:rgba(255,255,255,.44);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .detail-box .v,.kpi .v{
+      margin-top:6px;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .chart-box{
       height:240px;
       border:1px solid var(--line);
-      border-radius:12px;
-      background:#061019;
+      border-radius:8px;
+      background:linear-gradient(180deg,rgba(98,169,255,.09),rgba(255,255,255,.02));
       overflow:hidden;
     }
-    canvas{
+
+    .chart-box svg{
       width:100%;
       height:100%;
       display:block;
     }
-    .detail-meta{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:8px;
-      margin-top:10px;
-    }
-    .mini{
-      border:1px solid var(--line2);
-      border-radius:10px;
-      padding:8px;
-      background:#07111a;
-    }
-    .mini .label{
-      color:var(--muted);
-      font-size:11px;
-      margin-bottom:4px;
-      text-transform:uppercase;
-    }
-    .mini .value{
-      font-weight:700;
-      font-size:14px;
-    }
-    .book-columns{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
-    .level{
-      display:grid;
-      grid-template-columns:70px 1fr;
-      gap:8px;
-      padding:4px 0;
-      border-bottom:1px solid rgba(255,255,255,.05);
-      font-size:12px;
-    }
-    .trades{
-      display:grid;
-      gap:0;
-    }
-    .trade-row{
-      display:grid;
-      grid-template-columns:52px 88px 1fr 70px 82px;
-      gap:8px;
-      padding:6px 0;
-      border-bottom:1px solid rgba(255,255,255,.05);
-      font-size:12px;
-      align-items:center;
-    }
-    .history-wrap{
-      max-height:260px;
-      overflow:auto;
-      border:1px solid var(--line2);
-      border-radius:10px;
-      background:#07111a;
-    }
-    .empty{
-      color:var(--muted);
-      padding:12px;
-    }
-    .btn-row{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
+
+    .legend{
       margin-top:8px;
+      font-size:11px;
+      color:var(--muted);
     }
-    .ghost-btn{
-      background:#0b141f;
-      color:var(--text);
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:6px 10px;
-      font-size:12px;
+
+    .legend span{
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid transparent;
       cursor:pointer;
     }
-    @media (max-width:1200px){
-      .topbar{grid-template-columns:1fr 1fr}
-      .stats{grid-template-columns:1fr 1fr}
+
+    .legend span.active{
+      border-color:var(--line);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+    }
+
+    .legend .price::before,
+    .legend .open::before{
+      content:'';
+      display:inline-block;
+      width:10px;
+      height:2px;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .legend .price::before{background:var(--blue)}
+    .legend .open::before{background:var(--green)}
+
+    .table-mini{
+      border:1px solid var(--line);
+      border-radius:8px;
+      overflow:hidden;
+    }
+
+    .mini-head,.mini-row{
+      display:grid;
+      gap:8px;
+      align-items:center;
+      padding:8px 10px;
+      font-size:11px;
+    }
+
+    .mini-head{
+      background:rgba(255,255,255,.04);
+      color:rgba(255,255,255,.44);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .mini-row{
+      border-top:1px solid rgba(255,255,255,.06);
+    }
+
+    .event-table .mini-head,.event-table .mini-row{
+      grid-template-columns:1fr 1fr 1fr 1fr;
+    }
+
+    @media (max-width:1400px){
       .layout{grid-template-columns:1fr}
+      .feed{border-right:none}
+      .rows{max-height:none}
+    }
+
+    @media (max-width:980px){
+      .thead,.row{grid-template-columns:2.2fr .8fr 1fr 1fr .9fr .9fr}
+      .hide-md{display:none}
+      .detail-grid,.kpi-grid{grid-template-columns:1fr 1fr}
+    }
+
+    @media (max-width:680px){
+      .thead,.row{grid-template-columns:2.2fr .9fr 1fr 1fr}
+      .hide-sm{display:none}
+      .detail-grid,.kpi-grid{grid-template-columns:1fr}
+      .field.search{min-width:100%}
     }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="topbar">
-      <input id="backendUrl" value="https://betting-monitor-backend.onrender.com" />
-      <select id="windowSelect">
-        <option value="1m">1m</option>
-        <option value="3m">3m</option>
-        <option value="15m">15m</option>
-        <option value="60m" selected>60m</option>
-      </select>
-      <input id="minScore" type="number" value="20" min="0" max="100" step="1" />
-      <input id="minDrop" type="number" value="0.8" min="0" max="100" step="0.1" />
-      <input id="search" placeholder="search market / category / outcome" />
-      <button id="refreshBtn">Refresh</button>
-    </div>
-
-    <div class="statusbar" id="statusBar">
-      Initializing…
-      <div class="btn-row">
-        <button class="ghost-btn" id="testHealthBtn">Test /health</button>
-        <button class="ghost-btn" id="testMarketsBtn">Test /api/markets</button>
+      <div class="left-top">
+        <div class="brand-title">Betting Monitor</div>
+        <div class="sub"><span class="dot"></span><span id="streamStatus">Backend connected</span></div>
+        <div class="sub" id="eventCounter">0 markets loaded</div>
+      </div>
+      <div class="right-top">
+        <button class="btn" id="toggleControlsBtn">Hide controls</button>
+        <button class="btn" id="refreshBtn">Refresh</button>
       </div>
     </div>
 
-    <div class="stats">
-      <div class="card">
-        <div class="kpi-label">Rows</div>
-        <div class="kpi-value" id="rowsKpi">0</div>
+    <div class="controls" id="controlsArea">
+      <div class="tabs">
+        <button class="tab active" data-tab="all">All Drops</button>
+        <button class="tab" data-tab="fast">Fast Moves</button>
+        <button class="tab" data-tab="watching">Watching</button>
       </div>
-      <div class="card">
-        <div class="kpi-label">Whales</div>
-        <div class="kpi-value" id="whalesKpi">0</div>
+
+      <div class="filters">
+        <input id="searchInput" class="field search" placeholder="Search market or category..." />
+        <select id="categorySelect" class="field"></select>
+        <select id="sideSelect" class="field">
+          <option value="all">All sides</option>
+          <option value="YES">YES</option>
+          <option value="NO">NO</option>
+        </select>
+        <select id="sortSelect" class="field">
+          <option value="dropWindow">Sort: Biggest drop (window)</option>
+          <option value="dropOpen">Sort: Biggest drop (open)</option>
+          <option value="recent">Sort: Most recent</option>
+          <option value="volume">Sort: Volume</option>
+        </select>
+        <select id="windowSelect" class="field">
+          <option value="1">1 min window</option>
+          <option value="3">3 min window</option>
+          <option value="5">5 min window</option>
+          <option value="15">15 min window</option>
+          <option value="60" selected>60 min window</option>
+        </select>
+        <select id="minDropSelect" class="field">
+          <option value="0">Min drop 0%</option>
+          <option value="1">Min drop 1%</option>
+          <option value="2">Min drop 2%</option>
+          <option value="3" selected>Min drop 3%</option>
+          <option value="5">Min drop 5%</option>
+          <option value="10">Min drop 10%</option>
+        </select>
+        <select id="volumeSelect" class="field">
+          <option value="0">Any volume</option>
+          <option value="5000">Vol > $5k</option>
+          <option value="25000">Vol > $25k</option>
+          <option value="100000">Vol > $100k</option>
+        </select>
       </div>
-      <div class="card">
-        <div class="kpi-label">Avg Score</div>
-        <div class="kpi-value" id="scoreKpi">0</div>
+
+      <div class="metrics">
+        <div class="pill" id="sourceLabel">Backend markets</div>
+        <div class="pill" id="syncLabel">Last sync: —</div>
+        <div class="pill" id="dropStats">Drops: 0 · Fast: 0</div>
+        <div class="pill" id="marketStats">Markets: 0</div>
       </div>
-      <div class="card">
-        <div class="kpi-label">Last Refresh</div>
-        <div class="kpi-value" id="refreshKpi">-</div>
-      </div>
-      <div class="card">
-        <div class="kpi-label">Backend</div>
-        <div class="kpi-value" id="backendKpi">-</div>
-      </div>
+
+      <div id="errorArea"></div>
     </div>
 
     <div class="layout">
-      <div class="card">
-        <div class="headline">
-          <strong>Drop Feed</strong>
-          <span class="muted mono">polymarket terminal</span>
+      <div class="feed">
+        <div class="thead">
+          <div>Market</div>
+          <div>Side</div>
+          <div>Alert</div>
+          <div>Price</div>
+          <div class="hide-sm">Open</div>
+          <div class="hide-md">Drop win</div>
+          <div class="hide-md">Drop open</div>
+          <div class="hide-sm">Window</div>
+          <div class="hide-sm">Signal</div>
         </div>
-
-        <div class="feed-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Market</th>
-                <th>Now</th>
-                <th>Tick</th>
-                <th>Window</th>
-                <th>Open</th>
-                <th>Peak</th>
-                <th>Score</th>
-                <th>Type</th>
-                <th>Whale</th>
-                <th>Flow</th>
-              </tr>
-            </thead>
-            <tbody id="feedBody"></tbody>
-          </table>
-        </div>
+        <div class="rows" id="rows"></div>
       </div>
 
-      <div class="panel-stack">
-        <div class="card">
-          <div class="headline">
-            <strong id="detailsTitle">Select a market</strong>
-            <span class="muted" id="detailsMeta">-</span>
+      <div class="sidebar">
+        <div class="side-wrap">
+          <div class="side-card">
+            <div class="side-title">Selected market</div>
+            <div id="detailPane"></div>
           </div>
 
-          <div class="chart-wrap">
-            <canvas id="detailChart" width="760" height="240"></canvas>
+          <div class="side-card">
+            <div class="side-title">Price progression</div>
+            <div class="chart-box" id="chartBox"></div>
+            <div class="legend" id="chartLegendControls">
+              <span class="price toggle-line active" data-line="price">Price</span>
+              <span class="open toggle-line active" data-line="open">Opening</span>
+            </div>
           </div>
 
-          <div class="detail-meta">
-            <div class="mini">
-              <div class="label">Current</div>
-              <div class="value" id="metaCurrent">-</div>
-            </div>
-            <div class="mini">
-              <div class="label">Score</div>
-              <div class="value" id="metaScore">-</div>
-            </div>
-            <div class="mini">
-              <div class="label">Window Drop</div>
-              <div class="value" id="metaWindow">-</div>
-            </div>
-            <div class="mini">
-              <div class="label">Whale</div>
-              <div class="value" id="metaWhale">-</div>
+          <div class="side-card">
+            <div class="side-title">Chart points</div>
+            <div class="table-mini event-table">
+              <div class="mini-head">
+                <div>Time</div>
+                <div>Price</div>
+                <div>Drop vs prev</div>
+                <div>Drop vs open</div>
+              </div>
+              <div id="eventRows"></div>
             </div>
           </div>
-        </div>
 
-        <div class="card">
-          <div class="headline">
-            <strong>Orderbook</strong>
-            <span class="muted mono">bid / ask</span>
-          </div>
-          <div class="book-columns">
-            <div>
-              <div class="muted" style="margin-bottom:8px;">Bids</div>
-              <div id="bids"></div>
+          <div class="side-card">
+            <div class="side-title">Market intelligence</div>
+            <div class="kpi-grid">
+              <div class="kpi"><div class="k">Opening</div><div class="v" id="kpiOpening">—</div></div>
+              <div class="kpi"><div class="k">Current</div><div class="v" id="kpiCurrent">—</div></div>
+              <div class="kpi"><div class="k">Drop window</div><div class="v" id="kpiDropWindow">—</div></div>
+              <div class="kpi"><div class="k">Drop open</div><div class="v" id="kpiDropOpen">—</div></div>
+              <div class="kpi"><div class="k">Volume</div><div class="v" id="kpiVolume">—</div></div>
+              <div class="kpi"><div class="k">Window</div><div class="v" id="kpiWindow">—</div></div>
             </div>
-            <div>
-              <div class="muted" style="margin-bottom:8px;">Asks</div>
-              <div id="asks"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="headline">
-            <strong>Recent Trades / Wallets</strong>
-            <span class="muted mono">public flow</span>
-          </div>
-          <div id="tradesList" class="trades"></div>
-        </div>
-
-        <div class="card">
-          <div class="headline">
-            <strong>Market Development</strong>
-            <span class="muted mono">time / price / wallet</span>
-          </div>
-          <div class="history-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Price</th>
-                  <th>Size</th>
-                  <th>Side</th>
-                  <th>Wallet</th>
-                </tr>
-              </thead>
-              <tbody id="historyBody"></tbody>
-            </table>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-<script>
-const state = {
-  rows: [],
-  filteredRows: [],
-  selected: null,
-};
+  <script>
+    const API_BASE = 'https://betting-monitor-backend.onrender.com';
 
-const els = {
-  backendUrl: document.getElementById("backendUrl"),
-  windowSelect: document.getElementById("windowSelect"),
-  minScore: document.getElementById("minScore"),
-  minDrop: document.getElementById("minDrop"),
-  search: document.getElementById("search"),
-  refreshBtn: document.getElementById("refreshBtn"),
-  testHealthBtn: document.getElementById("testHealthBtn"),
-  testMarketsBtn: document.getElementById("testMarketsBtn"),
-  statusBar: document.getElementById("statusBar"),
-  backendKpi: document.getElementById("backendKpi"),
-  feedBody: document.getElementById("feedBody"),
-  rowsKpi: document.getElementById("rowsKpi"),
-  whalesKpi: document.getElementById("whalesKpi"),
-  scoreKpi: document.getElementById("scoreKpi"),
-  refreshKpi: document.getElementById("refreshKpi"),
-  detailsTitle: document.getElementById("detailsTitle"),
-  detailsMeta: document.getElementById("detailsMeta"),
-  metaCurrent: document.getElementById("metaCurrent"),
-  metaScore: document.getElementById("metaScore"),
-  metaWindow: document.getElementById("metaWindow"),
-  metaWhale: document.getElementById("metaWhale"),
-  bids: document.getElementById("bids"),
-  asks: document.getElementById("asks"),
-  tradesList: document.getElementById("tradesList"),
-  historyBody: document.getElementById("historyBody"),
-  detailChart: document.getElementById("detailChart"),
-};
+    const state = {
+      search: '',
+      category: 'all',
+      side: 'all',
+      sort: 'dropWindow',
+      minDrop: 3,
+      minVolume: 0,
+      tab: 'all',
+      controlsHidden: false,
+      markets: [],
+      selectedId: null,
+      lastSync: null,
+      error: '',
+      chartLines: { price: true, open: true },
+      windowMinutes: 60
+    };
 
-els.refreshBtn.addEventListener("click", loadFeed);
-els.windowSelect.addEventListener("change", loadFeed);
-els.minScore.addEventListener("input", renderFeed);
-els.minDrop.addEventListener("input", renderFeed);
-els.search.addEventListener("input", renderFeed);
-els.testHealthBtn.addEventListener("click", testHealth);
-els.testMarketsBtn.addEventListener("click", testMarkets);
+    const $ = (id) => document.getElementById(id);
 
-function setStatus(text, isError = false) {
-  els.statusBar.innerHTML = `
-    <div class="${isError ? 'bad' : 'muted'}">${escapeHtml(text)}</div>
-    <div class="btn-row">
-      <button class="ghost-btn" id="testHealthBtn">Test /health</button>
-      <button class="ghost-btn" id="testMarketsBtn">Test /api/markets</button>
-    </div>
-  `;
-  document.getElementById("testHealthBtn").addEventListener("click", testHealth);
-  document.getElementById("testMarketsBtn").addEventListener("click", testMarkets);
-}
+    const asNumber = (v, f = 0) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : f;
+    };
 
-async function testHealth() {
-  const base = getBase();
-  try {
-    const res = await fetch(base + "/health");
-    const txt = await res.text();
-    els.backendKpi.textContent = res.ok ? "OK" : "ERR";
-    setStatus(`/health -> ${res.status} ${txt.slice(0, 200)}`, !res.ok);
-  } catch (e) {
-    els.backendKpi.textContent = "ERR";
-    setStatus(`/health failed: ${e.message}`, true);
-  }
-}
+    const escapeHtml = (s) =>
+      String(s ?? '').replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[m]));
 
-async function testMarkets() {
-  const base = getBase();
-  try {
-    const res = await fetch(base + "/api/markets?window=60m&limit=5");
-    const txt = await res.text();
-    els.backendKpi.textContent = res.ok ? "OK" : "ERR";
-    setStatus(`/api/markets -> ${res.status} ${txt.slice(0, 300)}`, !res.ok);
-  } catch (e) {
-    els.backendKpi.textContent = "ERR";
-    setStatus(`/api/markets failed: ${e.message}`, true);
-  }
-}
+    const formatUsd = (v) =>
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+      }).format(asNumber(v));
 
-function getBase() {
-  return els.backendUrl.value.trim().replace(/\/$/, "");
-}
+    const formatProb = (v) => `${(asNumber(v) * 100).toFixed(2)}%`;
 
-async function loadFeed() {
-  const base = getBase();
-  const windowValue = els.windowSelect.value;
+    const formatOdds = (v) => {
+      const p = asNumber(v);
+      if (p <= 0 || p >= 1) return '—';
+      return (1 / p).toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+    };
 
-  if (!base.startsWith("http")) {
-    els.feedBody.innerHTML = `<tr><td colspan="10" class="bad">Invalid backend URL</td></tr>`;
-    els.backendKpi.textContent = "ERR";
-    setStatus("Backend URL invalid.", true);
-    return;
-  }
+    const formatAgo = (ts) => {
+      if (!ts) return '—';
+      const s = Math.floor((Date.now() - ts) / 1000);
+      if (s < 60) return `${s}s ago`;
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      return `${h}h ago`;
+    };
 
-  const url = `${base}/api/markets?window=${encodeURIComponent(windowValue)}&limit=200`;
-  els.feedBody.innerHTML = `<tr><td colspan="10" class="empty">Loading…</td></tr>`;
-  setStatus(`Loading ${url}`);
+    const formatTime = (ts) => {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      const p = (n) => String(n).padStart(2, '0');
+      return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    };
 
-  try {
-    const response = await fetch(url);
-    const payload = await response.json();
+    function recalcMarket(item, windowMinutes) {
+      const chart = Array.isArray(item.chart) ? item.chart.slice() : [];
+      const currentPrice = asNumber(item.currentPrice);
+      const openingPrice = asNumber(item.openingPrice, currentPrice);
+      const updatedAt = asNumber(item.updatedAt, Date.now());
 
-    if (!response.ok) {
-      throw new Error(payload.error || "Failed to load feed");
+      let previousPrice = asNumber(item.previousPrice, currentPrice);
+
+      if (chart.length >= 2) {
+        previousPrice = asNumber(chart[chart.length - 2].price, previousPrice);
+      }
+
+      const cutoff = updatedAt - windowMinutes * 60 * 1000;
+      const inWindow = chart.filter((p) => asNumber(p.ts) >= cutoff);
+      const basePoint = inWindow.length ? inWindow[0] : (chart.length ? chart[0] : null);
+      const baseWindowPrice = asNumber(basePoint?.price, previousPrice);
+
+      const dropPctWindow = baseWindowPrice > 0 && currentPrice < baseWindowPrice
+        ? ((baseWindowPrice - currentPrice) / baseWindowPrice) * 100
+        : 0;
+
+      const dropPctOpen = openingPrice > 0 && currentPrice < openingPrice
+        ? ((openingPrice - currentPrice) / openingPrice) * 100
+        : 0;
+
+      const dropPctPrev = previousPrice > 0 && currentPrice < previousPrice
+        ? ((previousPrice - currentPrice) / previousPrice) * 100
+        : 0;
+
+      let signal = 'Watching';
+      if (dropPctWindow >= 5 || dropPctOpen >= 5) signal = 'Fast move';
+
+      return {
+        ...item,
+        previousPrice,
+        openingPrice,
+        dropPctWindow,
+        dropPctOpen,
+        dropPctPrev,
+        dropPct: dropPctWindow,
+        dropWindowMinutes: windowMinutes,
+        signal
+      };
     }
 
-    state.rows = Array.isArray(payload.data) ? payload.data : [];
-    renderFeed();
-    updateStats();
+    async function loadMarkets() {
+      const res = await fetch(`${API_BASE}/api/markets?_=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`markets failed (${res.status})`);
 
-    els.backendKpi.textContent = "OK";
-    setStatus(`Loaded /api/markets successfully. Rows from backend: ${state.rows.length}`);
+      const raw = await res.json();
+      if (!Array.isArray(raw)) throw new Error('markets response is not an array');
 
-    if (state.filteredRows.length) {
-      await selectRow(state.filteredRows[0]);
-    } else {
-      clearDetails();
+      state.markets = raw.map((m) => recalcMarket(m, state.windowMinutes));
+      if (!state.selectedId && state.markets[0]) state.selectedId = state.markets[0].id;
+      state.lastSync = Date.now();
     }
-  } catch (error) {
-    els.feedBody.innerHTML = `<tr><td colspan="10" class="bad">${escapeHtml(error.message)}</td></tr>`;
-    els.backendKpi.textContent = "ERR";
-    setStatus(`Feed load failed: ${error.message}`, true);
-    clearDetails();
-  }
-}
 
-function renderFeed() {
-  const minScore = Number(els.minScore.value || 0);
-  const minDrop = Number(els.minDrop.value || 0);
-  const search = els.search.value.trim().toLowerCase();
+    function getSelected() {
+      const list = filteredMarkets();
+      return list.find((x) => x.id === state.selectedId) || list[0] || null;
+    }
 
-  state.filteredRows = state.rows.filter((row) => {
-    const text = `${row.title || ""} ${row.outcome || ""} ${row.category || ""}`.toLowerCase();
-    return (
-      num(row.signal?.score) >= minScore &&
-      num(row.analysis?.windowDropPct) >= minDrop &&
-      (!search || text.includes(search))
-    );
-  });
+    function filteredMarkets() {
+      let list = [...state.markets];
 
-  if (!state.filteredRows.length) {
-    els.feedBody.innerHTML = `<tr><td colspan="10" class="empty">No rows found with current filters</td></tr>`;
-    els.rowsKpi.textContent = "0";
-    return;
-  }
+      if (state.category !== 'all') list = list.filter((x) => x.category === state.category);
+      if (state.side !== 'all') list = list.filter((x) => x.outcome === state.side);
 
-  els.feedBody.innerHTML = state.filteredRows.map((row) => {
-    const flow = (row.trades || [])
-      .slice(0, 3)
-      .map((trade) => `${trade.side === "BUY" ? "B" : "S"} ${trade.label || shortWallet(trade.proxyWallet)}`)
-      .join(" · ");
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter((x) =>
+          (x.market || '').toLowerCase().includes(q) ||
+          (x.category || '').toLowerCase().includes(q) ||
+          (x.signal || '').toLowerCase().includes(q)
+        );
+      }
 
-    return `
-      <tr data-condition="${escapeHtml(row.conditionId)}" data-token="${escapeHtml(row.tokenId)}">
-        <td class="market-cell">
-          <div class="market-title">${escapeHtml(row.title || "-")}</div>
-          <div class="muted">${escapeHtml(row.outcome || "-")} · ${escapeHtml(row.category || "market")}</div>
-        </td>
-        <td>${fmtProb(row.currentPrice)}</td>
-        <td class="bad">-${num(row.analysis?.tickDropPct).toFixed(2)}%</td>
-        <td class="bad">-${num(row.analysis?.windowDropPct).toFixed(2)}%</td>
-        <td class="bad">-${num(row.analysis?.openingDropPct).toFixed(2)}%</td>
-        <td class="bad">-${num(row.analysis?.peakToCurrentPct).toFixed(2)}%</td>
-        <td class="${scoreClass(num(row.signal?.score))}">${num(row.signal?.score)} ${escapeHtml(row.signal?.label || "")}</td>
-        <td><span class="badge">${escapeHtml(row.signal?.type || "-")}</span></td>
-        <td class="whale">${row.whale?.whaleFlag ? `${escapeHtml(row.whale.whaleType)} ${num(row.whale.whaleScore)}` : "-"}</td>
-        <td class="muted">${escapeHtml(flow || "-")}</td>
-      </tr>
-    `;
-  }).join("");
-
-  [...els.feedBody.querySelectorAll("tr")].forEach((tr) => {
-    tr.addEventListener("click", () => {
-      const row = state.filteredRows.find(
-        (item) => item.conditionId === tr.dataset.condition && item.tokenId === tr.dataset.token
+      list = list.filter((x) =>
+        asNumber(x.dropPctWindow) >= state.minDrop &&
+        asNumber(x.volume24h) >= state.minVolume
       );
-      if (row) selectRow(row);
+
+      if (state.tab === 'fast') {
+        list = list.filter((x) => asNumber(x.dropPctWindow) >= 3 || asNumber(x.dropPctOpen) >= 3);
+      }
+
+      if (state.tab === 'watching') {
+        list = list.filter((x) => x.signal === 'Watching');
+      }
+
+      if (state.sort === 'dropWindow') {
+        list.sort((a, b) => asNumber(b.dropPctWindow) - asNumber(a.dropPctWindow));
+      } else if (state.sort === 'dropOpen') {
+        list.sort((a, b) => asNumber(b.dropPctOpen) - asNumber(a.dropPctOpen));
+      } else if (state.sort === 'recent') {
+        list.sort((a, b) => asNumber(b.updatedAt) - asNumber(a.updatedAt));
+      } else if (state.sort === 'volume') {
+        list.sort((a, b) => asNumber(b.volume24h) - asNumber(a.volume24h));
+      }
+
+      return list;
+    }
+
+    function renderControls() {
+      $('controlsArea').style.display = state.controlsHidden ? 'none' : 'block';
+      $('toggleControlsBtn').textContent = state.controlsHidden ? 'Show controls' : 'Hide controls';
+
+      $('sourceLabel').textContent = `Backend markets · ${state.windowMinutes}m drop window`;
+      $('syncLabel').textContent = `Last sync: ${state.lastSync ? formatAgo(state.lastSync) : '—'}`;
+      $('eventCounter').textContent = `${state.markets.length} markets loaded`;
+
+      $('searchInput').value = state.search;
+
+      const cats = ['all', ...Array.from(new Set(state.markets.map((x) => x.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+      $('categorySelect').innerHTML = cats.map((c) =>
+        `<option value="${escapeHtml(c)}">${c === 'all' ? 'All categories' : escapeHtml(c)}</option>`
+      ).join('');
+      $('categorySelect').value = state.category;
+
+      $('sideSelect').value = state.side;
+      $('sortSelect').value = state.sort;
+      $('minDropSelect').value = String(state.minDrop);
+      $('volumeSelect').value = String(state.minVolume);
+      $('windowSelect').value = String(state.windowMinutes);
+
+      const list = filteredMarkets();
+      const fast = list.filter((x) => asNumber(x.dropPctWindow) >= 3 || asNumber(x.dropPctOpen) >= 3).length;
+
+      $('dropStats').textContent = `Drops: ${list.length} · Fast: ${fast}`;
+      $('marketStats').textContent = `Markets: ${state.markets.length}`;
+
+      $('errorArea').innerHTML = state.error ? `<div class="notice">${escapeHtml(state.error)}</div>` : '';
+    }
+
+    function renderRows() {
+      const rowsEl = $('rows');
+      const list = filteredMarkets();
+      const selected = getSelected();
+
+      if (selected) state.selectedId = selected.id;
+
+      if (!list.length) {
+        rowsEl.innerHTML = `
+          <div class="row">
+            <div>No matching markets.</div>
+            <div></div><div></div><div></div>
+            <div class="hide-sm"></div>
+            <div class="hide-md"></div>
+            <div class="hide-md"></div>
+            <div class="hide-sm"></div>
+            <div class="hide-sm"></div>
+          </div>
+        `;
+        return;
+      }
+
+      rowsEl.innerHTML = list.map((item) => {
+        const badgeClass = item.signal === 'Fast move' ? 'fast' : 'watch';
+        return `
+          <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
+            <div>
+              <div class="market-title">${escapeHtml(item.market)}</div>
+              <div class="market-meta">${escapeHtml(item.category)} · ${formatAgo(item.updatedAt)} · vol ${formatUsd(item.volume24h)}</div>
+            </div>
+            <div>${escapeHtml(item.outcome || '')}</div>
+            <div class="${asNumber(item.dropPctWindow) >= 3 ? 'red' : 'green'}">${formatAgo(item.updatedAt)}</div>
+            <div>${formatOdds(item.previousPrice)} <span class="${asNumber(item.currentPrice) < asNumber(item.previousPrice) ? 'red' : 'green'}">→ ${formatOdds(item.currentPrice)}</span></div>
+            <div class="hide-sm">${formatOdds(item.openingPrice)}</div>
+            <div class="hide-md ${asNumber(item.dropPctWindow) >= 3 ? 'red' : 'muted'}">${asNumber(item.dropPctWindow).toFixed(2)}%</div>
+            <div class="hide-md ${asNumber(item.dropPctOpen) >= 3 ? 'red' : 'muted'}">${asNumber(item.dropPctOpen).toFixed(2)}%</div>
+            <div class="hide-sm">${item.dropWindowMinutes}m</div>
+            <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal)}</span></div>
+          </div>
+        `;
+      }).join('');
+
+      rowsEl.querySelectorAll('.row[data-id]').forEach((el) => {
+        el.onclick = () => {
+          state.selectedId = el.dataset.id;
+          render();
+        };
+      });
+    }
+
+    function renderChart() {
+      const box = $('chartBox');
+      const selected = getSelected();
+
+      if (!selected) {
+        box.innerHTML = '<div class="tiny" style="padding:12px;">No market selected.</div>';
+        return;
+      }
+
+      const chart = Array.isArray(selected.chart) ? selected.chart : [];
+      if (!chart.length) {
+        box.innerHTML = '<div class="tiny" style="padding:12px;">No chart data yet.</div>';
+        return;
+      }
+
+      const pts = chart.map((p, i) => ({
+        idx: i,
+        ts: asNumber(p.ts, Date.now()),
+        price: asNumber(p.price, selected.currentPrice)
+      }));
+
+      const w = 460;
+      const h = 240;
+      const padX = 16;
+      const padY = 18;
+
+      const vals = pts.map((p) => p.price);
+      vals.push(asNumber(selected.openingPrice, selected.currentPrice));
+
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = Math.max(0.0001, max - min);
+
+      const toLine = () => pts.map((p, i) => {
+        const x = padX + (i / Math.max(1, pts.length - 1)) * (w - padX * 2);
+        const y = h - padY - ((p.price - min) / range) * (h - padY * 2);
+        return `${x},${y}`;
+      }).join(' ');
+
+      const openingY = h - padY - ((asNumber(selected.openingPrice, selected.currentPrice) - min) / range) * (h - padY * 2);
+
+      box.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          ${state.chartLines.open ? `<line x1="${padX}" y1="${openingY}" x2="${w - padX}" y2="${openingY}" stroke="rgba(57,217,138,0.9)" stroke-width="1.5" stroke-dasharray="4 4"></line>` : ''}
+          ${state.chartLines.price ? `<polyline fill="none" stroke="rgba(98,169,255,0.98)" stroke-width="2.8" points="${toLine()}"></polyline>` : ''}
+        </svg>
+      `;
+    }
+
+    function renderDetail() {
+      const selected = getSelected();
+      const detail = $('detailPane');
+      const eventRows = $('eventRows');
+
+      if (!selected) {
+        detail.innerHTML = '<div class="tiny">Select a market from the feed.</div>';
+        eventRows.innerHTML = '';
+        return;
+      }
+
+      detail.innerHTML = `
+        <div class="detail-title">${escapeHtml(selected.market)}</div>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="badge">${escapeHtml(selected.category || '')}</span>
+          <span class="badge">${escapeHtml(selected.outcome || '')}</span>
+          <span class="badge ${selected.signal === 'Fast move' ? 'fast' : 'watch'}">${escapeHtml(selected.signal || '')}</span>
+        </div>
+        <div class="detail-grid" style="margin-top:10px;">
+          <div class="detail-box">
+            <div class="k">Opening price</div>
+            <div class="v">${formatOdds(selected.openingPrice)}</div>
+            <div class="tiny">${formatProb(selected.openingPrice)}</div>
+          </div>
+          <div class="detail-box">
+            <div class="k">Current price</div>
+            <div class="v">${formatOdds(selected.currentPrice)}</div>
+            <div class="tiny">${formatProb(selected.currentPrice)}</div>
+          </div>
+          <div class="detail-box">
+            <div class="k">Drop vs window</div>
+            <div class="v ${asNumber(selected.dropPctWindow) >= 3 ? 'red' : 'muted'}">${asNumber(selected.dropPctWindow).toFixed(2)}%</div>
+            <div class="tiny">${selected.dropWindowMinutes} minute basis</div>
+          </div>
+          <div class="detail-box">
+            <div class="k">Drop vs opening</div>
+            <div class="v ${asNumber(selected.dropPctOpen) >= 3 ? 'red' : 'muted'}">${asNumber(selected.dropPctOpen).toFixed(2)}%</div>
+            <div class="tiny">since first tracked price</div>
+          </div>
+        </div>
+      `;
+
+      renderChart();
+
+      const chart = Array.isArray(selected.chart) ? selected.chart : [];
+      eventRows.innerHTML = chart.length
+        ? chart.slice().reverse().map((p, idx, arr) => {
+            const currentPrice = asNumber(p.price);
+            const prevPrice = idx < arr.length - 1 ? asNumber(arr[idx + 1].price, currentPrice) : currentPrice;
+            const openPrice = asNumber(selected.openingPrice, currentPrice);
+
+            const dropPrev = prevPrice > 0 && currentPrice < prevPrice ? ((prevPrice - currentPrice) / prevPrice) * 100 : 0;
+            const dropOpen = openPrice > 0 && currentPrice < openPrice ? ((openPrice - currentPrice) / openPrice) * 100 : 0;
+
+            return `
+              <div class="mini-row">
+                <div>${formatTime(p.ts)}</div>
+                <div>${formatOdds(currentPrice)}</div>
+                <div class="${dropPrev >= 1 ? 'red' : 'muted'}">${dropPrev.toFixed(2)}%</div>
+                <div class="${dropOpen >= 1 ? 'red' : 'muted'}">${dropOpen.toFixed(2)}%</div>
+              </div>
+            `;
+          }).join('')
+        : '<div class="mini-row"><div>No chart points.</div><div></div><div></div><div></div></div>';
+
+      $('kpiOpening').textContent = formatOdds(selected.openingPrice);
+      $('kpiCurrent').textContent = formatOdds(selected.currentPrice);
+      $('kpiDropWindow').textContent = `${asNumber(selected.dropPctWindow).toFixed(2)}%`;
+      $('kpiDropOpen').textContent = `${asNumber(selected.dropPctOpen).toFixed(2)}%`;
+      $('kpiVolume').textContent = formatUsd(selected.volume24h);
+      $('kpiWindow').textContent = `${selected.dropWindowMinutes}m`;
+    }
+
+    function render() {
+      renderControls();
+      renderRows();
+      renderDetail();
+    }
+
+    async function init() {
+      try {
+        state.error = '';
+        await loadMarkets();
+        render();
+      } catch (err) {
+        console.error(err);
+        state.error = `Frontend error:\n${err.message || String(err)}`;
+        render();
+      }
+    }
+
+    $('searchInput').addEventListener('input', (e) => {
+      state.search = e.target.value;
+      render();
     });
-  });
 
-  els.rowsKpi.textContent = String(state.filteredRows.length);
-}
+    $('categorySelect').addEventListener('change', (e) => {
+      state.category = e.target.value;
+      render();
+    });
 
-async function selectRow(row) {
-  state.selected = row;
+    $('sideSelect').addEventListener('change', (e) => {
+      state.side = e.target.value;
+      render();
+    });
 
-  els.detailsTitle.textContent = row.title || "Selected market";
-  els.detailsMeta.textContent = `${row.outcome || "-"} · ${row.category || "market"}`;
-  els.metaCurrent.textContent = fmtProb(row.currentPrice);
-  els.metaScore.textContent = `${num(row.signal?.score)} ${row.signal?.label || ""}`;
-  els.metaWindow.textContent = `-${num(row.analysis?.windowDropPct).toFixed(2)}%`;
-  els.metaWhale.textContent = row.whale?.whaleFlag
-    ? `${row.whale.whaleType} ${num(row.whale.whaleScore)}`
-    : "none";
+    $('sortSelect').addEventListener('change', (e) => {
+      state.sort = e.target.value;
+      render();
+    });
 
-  renderOrderBook(row.orderbook || {});
-  renderTrades(row.trades || []);
-  renderHistory(row.trades || []);
-  drawChart(row.chart || [], row.analysis || null);
+    $('minDropSelect').addEventListener('change', (e) => {
+      state.minDrop = asNumber(e.target.value, 0);
+      render();
+    });
 
-  try {
-    const base = getBase();
-    const url = `${base}/api/market/${encodeURIComponent(row.conditionId)}/details?tokenId=${encodeURIComponent(row.tokenId)}`;
-    const response = await fetch(url);
-    const payload = await response.json();
+    $('volumeSelect').addEventListener('change', (e) => {
+      state.minVolume = asNumber(e.target.value, 0);
+      render();
+    });
 
-    if (!response.ok) {
-      throw new Error(payload.error || "Failed to load details");
-    }
+    $('windowSelect').addEventListener('change', async (e) => {
+      state.windowMinutes = asNumber(e.target.value, 60);
+      state.markets = state.markets.map((m) => recalcMarket(m, state.windowMinutes));
+      render();
+    });
 
-    renderOrderBook(payload.orderbook || {});
-    renderTrades(payload.trades || []);
-    renderHistory(payload.trades || []);
-    drawChart(payload.chart || [], payload.analysis || null);
+    document.querySelectorAll('.tab').forEach((el) => {
+      el.addEventListener('click', () => {
+        state.tab = el.dataset.tab;
+        document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+        el.classList.add('active');
+        render();
+      });
+    });
 
-    if (payload.analysis) {
-      els.metaCurrent.textContent = fmtProb(payload.analysis.currentPrice || row.currentPrice);
-      els.metaWindow.textContent = `-${num(payload.analysis.windowDropPct).toFixed(2)}%`;
-    }
+    $('toggleControlsBtn').addEventListener('click', () => {
+      state.controlsHidden = !state.controlsHidden;
+      render();
+    });
 
-    if (payload.whale) {
-      els.metaWhale.textContent = payload.whale.whaleFlag
-        ? `${payload.whale.whaleType} ${num(payload.whale.whaleScore)}`
-        : "none";
-    }
-  } catch {}
-}
+    $('refreshBtn').addEventListener('click', async () => {
+      await init();
+    });
 
-function clearDetails() {
-  els.detailsTitle.textContent = "Select a market";
-  els.detailsMeta.textContent = "-";
-  els.metaCurrent.textContent = "-";
-  els.metaScore.textContent = "-";
-  els.metaWindow.textContent = "-";
-  els.metaWhale.textContent = "-";
-  els.bids.innerHTML = `<div class="empty">No bids</div>`;
-  els.asks.innerHTML = `<div class="empty">No asks</div>`;
-  els.tradesList.innerHTML = `<div class="empty">No trades</div>`;
-  els.historyBody.innerHTML = `<tr><td colspan="5" class="empty">No market development</td></tr>`;
-  drawChart([], null);
-}
+    $('chartLegendControls').addEventListener('click', (e) => {
+      const el = e.target.closest('.toggle-line');
+      if (!el) return;
+      const key = el.dataset.line;
+      state.chartLines[key] = !state.chartLines[key];
+      el.classList.toggle('active', state.chartLines[key]);
+      renderChart();
+    });
 
-function renderOrderBook(book = {}) {
-  els.bids.innerHTML = (book.bids || []).length
-    ? book.bids.map(levelTemplate).join("")
-    : `<div class="empty">No bids</div>`;
+    window.addEventListener('error', (e) => {
+      state.error = `JS crash:\n${e.message}`;
+      render();
+    });
 
-  els.asks.innerHTML = (book.asks || []).length
-    ? book.asks.map(levelTemplate).join("")
-    : `<div class="empty">No asks</div>`;
-}
-
-function levelTemplate(level) {
-  return `<div class="level"><span>${fmtProb(level.price)}</span><span>${fmtUsd(level.size)}</span></div>`;
-}
-
-function renderTrades(trades = []) {
-  els.tradesList.innerHTML = trades.length
-    ? trades.slice(0, 14).map((trade) => `
-      <div class="trade-row mono">
-        <span class="${trade.side === "BUY" ? "good" : "bad"}">${escapeHtml(trade.side || "-")}</span>
-        <span>${timeOnly(trade.timestamp)}</span>
-        <span>${escapeHtml(trade.label || shortWallet(trade.proxyWallet))}</span>
-        <span>${fmtProb(trade.price)}</span>
-        <span>${fmtUsd(trade.size)}</span>
-      </div>
-    `).join("")
-    : `<div class="empty">No trades</div>`;
-}
-
-function renderHistory(trades = []) {
-  if (!trades.length) {
-    els.historyBody.innerHTML = `<tr><td colspan="5" class="empty">No market development</td></tr>`;
-    return;
-  }
-
-  els.historyBody.innerHTML = trades.slice(0, 40).map((trade) => `
-    <tr>
-      <td>${timeOnly(trade.timestamp)}</td>
-      <td>${fmtProb(trade.price)}</td>
-      <td>${fmtUsd(trade.size)}</td>
-      <td class="${trade.side === "BUY" ? "good" : "bad"}">${escapeHtml(trade.side || "-")}</td>
-      <td>${escapeHtml(trade.label || shortWallet(trade.proxyWallet))}</td>
-    </tr>
-  `).join("");
-}
-
-function drawChart(chart = [], analysis = null) {
-  const canvas = els.detailChart;
-  const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#061019";
-  ctx.fillRect(0, 0, width, height);
-
-  if (!Array.isArray(chart) || chart.length < 2) return;
-
-  const points = chart
-    .map((point) => ({
-      x: Number(point.t ?? point.timestamp ?? 0),
-      y: Number(point.p ?? point.price ?? 0),
-    }))
-    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.x > 0);
-
-  if (points.length < 2) return;
-
-  const minX = Math.min(...points.map((p) => p.x));
-  const maxX = Math.max(...points.map((p) => p.x));
-  const minY = Math.min(...points.map((p) => p.y));
-  const maxY = Math.max(...points.map((p) => p.y));
-
-  const pad = 16;
-  const px = (x) => pad + ((x - minX) / Math.max(1, maxX - minX)) * (width - pad * 2);
-  const py = (y) => height - pad - ((y - minY) / Math.max(0.0001, maxY - minY)) * (height - pad * 2);
-
-  ctx.strokeStyle = "#14314a";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    const y = pad + ((height - pad * 2) / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(width - pad, y);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle = "#66b6ff";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  points.forEach((point, index) => {
-    const x = px(point.x);
-    const y = py(point.y);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-  if (analysis?.localHighTs && Number.isFinite(analysis.localHighPrice)) {
-    dot(ctx, px(analysis.localHighTs), py(analysis.localHighPrice), "#ffd76c");
-  }
-  if (analysis?.localLowTs && Number.isFinite(analysis.localLowPrice)) {
-    dot(ctx, px(analysis.localLowTs), py(analysis.localLowPrice), "#ff7f7f");
-  }
-
-  const last = points[points.length - 1];
-  dot(ctx, px(last.x), py(last.y), "#82f3b7");
-}
-
-function dot(ctx, x, y, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, 4, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function updateStats() {
-  const rows = state.rows;
-  const whales = rows.filter((row) => row.whale?.whaleFlag).length;
-  const avgScore = rows.length
-    ? rows.reduce((sum, row) => sum + num(row.signal?.score), 0) / rows.length
-    : 0;
-
-  els.whalesKpi.textContent = String(whales);
-  els.scoreKpi.textContent = avgScore.toFixed(1);
-  els.refreshKpi.textContent = new Date().toLocaleTimeString();
-}
-
-function fmtProb(value) {
-  return `${(num(value) * 100).toFixed(1)}%`;
-}
-
-function fmtUsd(value) {
-  return `$${num(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
-
-function shortWallet(address = "") {
-  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "unknown";
-}
-
-function timeOnly(ts) {
-  return ts ? new Date(Number(ts)).toLocaleTimeString() : "-";
-}
-
-function scoreClass(score) {
-  if (score >= 65) return "score-a";
-  if (score >= 45) return "score-b";
-  return "score-c";
-}
-
-function num(value) {
-  return Number(value || 0);
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-loadFeed();
-setInterval(loadFeed, 30000);
-</script>
+    init();
+  </script>
 </body>
 </html>
