@@ -8,20 +8,17 @@
     :root{
       --bg:#04080d;
       --panel:#08111a;
-      --panel2:#0c1622;
-      --line:#15314b;
-      --line2:#102535;
+      --panel2:#0d1622;
+      --line:#16314b;
+      --line2:#102433;
       --text:#d9e8f6;
       --muted:#7f95aa;
-      --blue:#63b5ff;
+      --blue:#66b6ff;
       --green:#82f3b7;
       --yellow:#ffd76c;
       --red:#ff7f7f;
-      --cyan:#79e8ff;
     }
-
     *{box-sizing:border-box}
-
     html,body{
       margin:0;
       padding:0;
@@ -29,54 +26,46 @@
       color:var(--text);
       font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
-
-    body{
-      min-height:100vh;
-    }
-
-    .app{
-      padding:12px;
-    }
-
+    body{min-height:100vh}
+    .app{padding:12px}
     .topbar{
       display:grid;
-      grid-template-columns: 320px 110px 110px 110px 1fr 120px;
+      grid-template-columns:320px 110px 110px 110px 1fr 120px;
       gap:10px;
       margin-bottom:12px;
     }
-
-    .topbar input,
-    .topbar select,
-    .topbar button{
-      height:36px;
-      background:linear-gradient(180deg,#07111a,#0b141f);
-      border:1px solid var(--line);
-      color:var(--text);
+    .topbar input,.topbar select,.topbar button{
+      height:38px;
       border-radius:10px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,#07111a,#0b141f);
+      color:var(--text);
       padding:0 12px;
       font-size:13px;
       outline:none;
     }
-
-    .topbar button{
-      cursor:pointer;
-      font-weight:600;
+    .topbar button{cursor:pointer;font-weight:700}
+    .statusbar{
+      margin-bottom:12px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,#07111a,#0b141f);
+      border-radius:12px;
+      font-size:13px;
+      color:var(--muted);
     }
-
     .stats{
       display:grid;
-      grid-template-columns:repeat(4,1fr);
+      grid-template-columns:repeat(5,1fr);
       gap:10px;
       margin-bottom:12px;
     }
-
     .card{
       background:linear-gradient(180deg,var(--panel),var(--panel2));
       border:1px solid var(--line);
       border-radius:14px;
       padding:12px;
     }
-
     .kpi-label{
       font-size:12px;
       color:var(--muted);
@@ -84,20 +73,17 @@
       text-transform:uppercase;
       letter-spacing:.04em;
     }
-
     .kpi-value{
       font-size:24px;
       font-weight:800;
       line-height:1;
     }
-
     .layout{
       display:grid;
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns:2fr 1fr;
       gap:12px;
       align-items:start;
     }
-
     .headline{
       display:flex;
       align-items:center;
@@ -105,11 +91,7 @@
       gap:8px;
       margin-bottom:10px;
     }
-
-    .headline strong{
-      font-size:20px;
-    }
-
+    .headline strong{font-size:20px}
     .muted{color:var(--muted)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
     .bad{color:var(--red)}
@@ -118,7 +100,6 @@
     .score-a{color:var(--green);font-weight:700}
     .score-b{color:var(--yellow);font-weight:700}
     .score-c{color:var(--red);font-weight:700}
-
     .feed-wrap{
       border:1px solid var(--line2);
       border-radius:12px;
@@ -126,20 +107,17 @@
       max-height:76vh;
       background:#07111a;
     }
-
     table{
       width:100%;
       border-collapse:collapse;
       font-size:12px;
     }
-
     thead{
       position:sticky;
       top:0;
       z-index:2;
       background:#08111a;
     }
-
     th,td{
       text-align:left;
       padding:8px 8px;
@@ -147,34 +125,24 @@
       vertical-align:middle;
       white-space:nowrap;
     }
-
     th{
-      color:#b7cbde;
+      color:#b8cbdd;
       font-size:11px;
       letter-spacing:.03em;
       text-transform:uppercase;
     }
-
-    tbody tr{
-      cursor:pointer;
-    }
-
-    tbody tr:hover{
-      background:rgba(99,181,255,.08);
-    }
-
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:rgba(102,182,255,.08)}
     .market-cell{
-      min-width:310px;
-      max-width:420px;
+      min-width:320px;
+      max-width:460px;
       white-space:normal;
       line-height:1.25;
     }
-
     .market-title{
       font-weight:700;
       margin-bottom:3px;
     }
-
     .badge{
       display:inline-flex;
       align-items:center;
@@ -183,14 +151,12 @@
       border-radius:999px;
       font-size:10px;
       text-transform:uppercase;
-      color:#cde0f0;
+      color:#d2e2f1;
     }
-
     .panel-stack{
       display:grid;
       gap:12px;
     }
-
     .chart-wrap{
       width:100%;
       height:240px;
@@ -199,45 +165,38 @@
       background:#061019;
       overflow:hidden;
     }
-
     canvas{
       width:100%;
       height:100%;
       display:block;
     }
-
     .detail-meta{
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       gap:8px;
       margin-top:10px;
     }
-
     .mini{
       border:1px solid var(--line2);
       border-radius:10px;
       padding:8px;
       background:#07111a;
     }
-
     .mini .label{
       color:var(--muted);
       font-size:11px;
       margin-bottom:4px;
       text-transform:uppercase;
     }
-
     .mini .value{
       font-weight:700;
       font-size:14px;
     }
-
     .book-columns{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:10px;
     }
-
     .level{
       display:grid;
       grid-template-columns:70px 1fr;
@@ -246,12 +205,10 @@
       border-bottom:1px solid rgba(255,255,255,.05);
       font-size:12px;
     }
-
     .trades{
       display:grid;
       gap:0;
     }
-
     .trade-row{
       display:grid;
       grid-template-columns:52px 88px 1fr 70px 82px;
@@ -261,36 +218,36 @@
       font-size:12px;
       align-items:center;
     }
-
-    .history-table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:12px;
-    }
-
     .history-wrap{
-      max-height:240px;
+      max-height:260px;
       overflow:auto;
       border:1px solid var(--line2);
       border-radius:10px;
       background:#07111a;
     }
-
     .empty{
       color:var(--muted);
       padding:12px;
     }
-
-    @media (max-width: 1200px){
-      .topbar{
-        grid-template-columns:1fr 1fr;
-      }
-      .stats{
-        grid-template-columns:1fr 1fr;
-      }
-      .layout{
-        grid-template-columns:1fr;
-      }
+    .btn-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .ghost-btn{
+      background:#0b141f;
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:6px 10px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    @media (max-width:1200px){
+      .topbar{grid-template-columns:1fr 1fr}
+      .stats{grid-template-columns:1fr 1fr}
+      .layout{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -310,6 +267,14 @@
       <button id="refreshBtn">Refresh</button>
     </div>
 
+    <div class="statusbar" id="statusBar">
+      Initializing…
+      <div class="btn-row">
+        <button class="ghost-btn" id="testHealthBtn">Test /health</button>
+        <button class="ghost-btn" id="testMarketsBtn">Test /api/markets</button>
+      </div>
+    </div>
+
     <div class="stats">
       <div class="card">
         <div class="kpi-label">Rows</div>
@@ -326,6 +291,10 @@
       <div class="card">
         <div class="kpi-label">Last Refresh</div>
         <div class="kpi-value" id="refreshKpi">-</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Backend</div>
+        <div class="kpi-value" id="backendKpi">-</div>
       </div>
     </div>
 
@@ -419,7 +388,7 @@
             <span class="muted mono">time / price / wallet</span>
           </div>
           <div class="history-wrap">
-            <table class="history-table">
+            <table>
               <thead>
                 <tr>
                   <th>Time</th>
@@ -437,6 +406,414 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+<script>
+const state = {
+  rows: [],
+  filteredRows: [],
+  selected: null,
+};
+
+const els = {
+  backendUrl: document.getElementById("backendUrl"),
+  windowSelect: document.getElementById("windowSelect"),
+  minScore: document.getElementById("minScore"),
+  minDrop: document.getElementById("minDrop"),
+  search: document.getElementById("search"),
+  refreshBtn: document.getElementById("refreshBtn"),
+  testHealthBtn: document.getElementById("testHealthBtn"),
+  testMarketsBtn: document.getElementById("testMarketsBtn"),
+  statusBar: document.getElementById("statusBar"),
+  backendKpi: document.getElementById("backendKpi"),
+  feedBody: document.getElementById("feedBody"),
+  rowsKpi: document.getElementById("rowsKpi"),
+  whalesKpi: document.getElementById("whalesKpi"),
+  scoreKpi: document.getElementById("scoreKpi"),
+  refreshKpi: document.getElementById("refreshKpi"),
+  detailsTitle: document.getElementById("detailsTitle"),
+  detailsMeta: document.getElementById("detailsMeta"),
+  metaCurrent: document.getElementById("metaCurrent"),
+  metaScore: document.getElementById("metaScore"),
+  metaWindow: document.getElementById("metaWindow"),
+  metaWhale: document.getElementById("metaWhale"),
+  bids: document.getElementById("bids"),
+  asks: document.getElementById("asks"),
+  tradesList: document.getElementById("tradesList"),
+  historyBody: document.getElementById("historyBody"),
+  detailChart: document.getElementById("detailChart"),
+};
+
+els.refreshBtn.addEventListener("click", loadFeed);
+els.windowSelect.addEventListener("change", loadFeed);
+els.minScore.addEventListener("input", renderFeed);
+els.minDrop.addEventListener("input", renderFeed);
+els.search.addEventListener("input", renderFeed);
+els.testHealthBtn.addEventListener("click", testHealth);
+els.testMarketsBtn.addEventListener("click", testMarkets);
+
+function setStatus(text, isError = false) {
+  els.statusBar.innerHTML = `
+    <div class="${isError ? 'bad' : 'muted'}">${escapeHtml(text)}</div>
+    <div class="btn-row">
+      <button class="ghost-btn" id="testHealthBtn">Test /health</button>
+      <button class="ghost-btn" id="testMarketsBtn">Test /api/markets</button>
+    </div>
+  `;
+  document.getElementById("testHealthBtn").addEventListener("click", testHealth);
+  document.getElementById("testMarketsBtn").addEventListener("click", testMarkets);
+}
+
+async function testHealth() {
+  const base = getBase();
+  try {
+    const res = await fetch(base + "/health");
+    const txt = await res.text();
+    els.backendKpi.textContent = res.ok ? "OK" : "ERR";
+    setStatus(`/health -> ${res.status} ${txt.slice(0, 200)}`, !res.ok);
+  } catch (e) {
+    els.backendKpi.textContent = "ERR";
+    setStatus(`/health failed: ${e.message}`, true);
+  }
+}
+
+async function testMarkets() {
+  const base = getBase();
+  try {
+    const res = await fetch(base + "/api/markets?window=60m&limit=5");
+    const txt = await res.text();
+    els.backendKpi.textContent = res.ok ? "OK" : "ERR";
+    setStatus(`/api/markets -> ${res.status} ${txt.slice(0, 300)}`, !res.ok);
+  } catch (e) {
+    els.backendKpi.textContent = "ERR";
+    setStatus(`/api/markets failed: ${e.message}`, true);
+  }
+}
+
+function getBase() {
+  return els.backendUrl.value.trim().replace(/\/$/, "");
+}
+
+async function loadFeed() {
+  const base = getBase();
+  const windowValue = els.windowSelect.value;
+
+  if (!base.startsWith("http")) {
+    els.feedBody.innerHTML = `<tr><td colspan="10" class="bad">Invalid backend URL</td></tr>`;
+    els.backendKpi.textContent = "ERR";
+    setStatus("Backend URL invalid.", true);
+    return;
+  }
+
+  const url = `${base}/api/markets?window=${encodeURIComponent(windowValue)}&limit=200`;
+  els.feedBody.innerHTML = `<tr><td colspan="10" class="empty">Loading…</td></tr>`;
+  setStatus(`Loading ${url}`);
+
+  try {
+    const response = await fetch(url);
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to load feed");
+    }
+
+    state.rows = Array.isArray(payload.data) ? payload.data : [];
+    renderFeed();
+    updateStats();
+
+    els.backendKpi.textContent = "OK";
+    setStatus(`Loaded /api/markets successfully. Rows from backend: ${state.rows.length}`);
+
+    if (state.filteredRows.length) {
+      await selectRow(state.filteredRows[0]);
+    } else {
+      clearDetails();
+    }
+  } catch (error) {
+    els.feedBody.innerHTML = `<tr><td colspan="10" class="bad">${escapeHtml(error.message)}</td></tr>`;
+    els.backendKpi.textContent = "ERR";
+    setStatus(`Feed load failed: ${error.message}`, true);
+    clearDetails();
+  }
+}
+
+function renderFeed() {
+  const minScore = Number(els.minScore.value || 0);
+  const minDrop = Number(els.minDrop.value || 0);
+  const search = els.search.value.trim().toLowerCase();
+
+  state.filteredRows = state.rows.filter((row) => {
+    const text = `${row.title || ""} ${row.outcome || ""} ${row.category || ""}`.toLowerCase();
+    return (
+      num(row.signal?.score) >= minScore &&
+      num(row.analysis?.windowDropPct) >= minDrop &&
+      (!search || text.includes(search))
+    );
+  });
+
+  if (!state.filteredRows.length) {
+    els.feedBody.innerHTML = `<tr><td colspan="10" class="empty">No rows found with current filters</td></tr>`;
+    els.rowsKpi.textContent = "0";
+    return;
+  }
+
+  els.feedBody.innerHTML = state.filteredRows.map((row) => {
+    const flow = (row.trades || [])
+      .slice(0, 3)
+      .map((trade) => `${trade.side === "BUY" ? "B" : "S"} ${trade.label || shortWallet(trade.proxyWallet)}`)
+      .join(" · ");
+
+    return `
+      <tr data-condition="${escapeHtml(row.conditionId)}" data-token="${escapeHtml(row.tokenId)}">
+        <td class="market-cell">
+          <div class="market-title">${escapeHtml(row.title || "-")}</div>
+          <div class="muted">${escapeHtml(row.outcome || "-")} · ${escapeHtml(row.category || "market")}</div>
+        </td>
+        <td>${fmtProb(row.currentPrice)}</td>
+        <td class="bad">-${num(row.analysis?.tickDropPct).toFixed(2)}%</td>
+        <td class="bad">-${num(row.analysis?.windowDropPct).toFixed(2)}%</td>
+        <td class="bad">-${num(row.analysis?.openingDropPct).toFixed(2)}%</td>
+        <td class="bad">-${num(row.analysis?.peakToCurrentPct).toFixed(2)}%</td>
+        <td class="${scoreClass(num(row.signal?.score))}">${num(row.signal?.score)} ${escapeHtml(row.signal?.label || "")}</td>
+        <td><span class="badge">${escapeHtml(row.signal?.type || "-")}</span></td>
+        <td class="whale">${row.whale?.whaleFlag ? `${escapeHtml(row.whale.whaleType)} ${num(row.whale.whaleScore)}` : "-"}</td>
+        <td class="muted">${escapeHtml(flow || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  [...els.feedBody.querySelectorAll("tr")].forEach((tr) => {
+    tr.addEventListener("click", () => {
+      const row = state.filteredRows.find(
+        (item) => item.conditionId === tr.dataset.condition && item.tokenId === tr.dataset.token
+      );
+      if (row) selectRow(row);
+    });
+  });
+
+  els.rowsKpi.textContent = String(state.filteredRows.length);
+}
+
+async function selectRow(row) {
+  state.selected = row;
+
+  els.detailsTitle.textContent = row.title || "Selected market";
+  els.detailsMeta.textContent = `${row.outcome || "-"} · ${row.category || "market"}`;
+  els.metaCurrent.textContent = fmtProb(row.currentPrice);
+  els.metaScore.textContent = `${num(row.signal?.score)} ${row.signal?.label || ""}`;
+  els.metaWindow.textContent = `-${num(row.analysis?.windowDropPct).toFixed(2)}%`;
+  els.metaWhale.textContent = row.whale?.whaleFlag
+    ? `${row.whale.whaleType} ${num(row.whale.whaleScore)}`
+    : "none";
+
+  renderOrderBook(row.orderbook || {});
+  renderTrades(row.trades || []);
+  renderHistory(row.trades || []);
+  drawChart(row.chart || [], row.analysis || null);
+
+  try {
+    const base = getBase();
+    const url = `${base}/api/market/${encodeURIComponent(row.conditionId)}/details?tokenId=${encodeURIComponent(row.tokenId)}`;
+    const response = await fetch(url);
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to load details");
+    }
+
+    renderOrderBook(payload.orderbook || {});
+    renderTrades(payload.trades || []);
+    renderHistory(payload.trades || []);
+    drawChart(payload.chart || [], payload.analysis || null);
+
+    if (payload.analysis) {
+      els.metaCurrent.textContent = fmtProb(payload.analysis.currentPrice || row.currentPrice);
+      els.metaWindow.textContent = `-${num(payload.analysis.windowDropPct).toFixed(2)}%`;
+    }
+
+    if (payload.whale) {
+      els.metaWhale.textContent = payload.whale.whaleFlag
+        ? `${payload.whale.whaleType} ${num(payload.whale.whaleScore)}`
+        : "none";
+    }
+  } catch {}
+}
+
+function clearDetails() {
+  els.detailsTitle.textContent = "Select a market";
+  els.detailsMeta.textContent = "-";
+  els.metaCurrent.textContent = "-";
+  els.metaScore.textContent = "-";
+  els.metaWindow.textContent = "-";
+  els.metaWhale.textContent = "-";
+  els.bids.innerHTML = `<div class="empty">No bids</div>`;
+  els.asks.innerHTML = `<div class="empty">No asks</div>`;
+  els.tradesList.innerHTML = `<div class="empty">No trades</div>`;
+  els.historyBody.innerHTML = `<tr><td colspan="5" class="empty">No market development</td></tr>`;
+  drawChart([], null);
+}
+
+function renderOrderBook(book = {}) {
+  els.bids.innerHTML = (book.bids || []).length
+    ? book.bids.map(levelTemplate).join("")
+    : `<div class="empty">No bids</div>`;
+
+  els.asks.innerHTML = (book.asks || []).length
+    ? book.asks.map(levelTemplate).join("")
+    : `<div class="empty">No asks</div>`;
+}
+
+function levelTemplate(level) {
+  return `<div class="level"><span>${fmtProb(level.price)}</span><span>${fmtUsd(level.size)}</span></div>`;
+}
+
+function renderTrades(trades = []) {
+  els.tradesList.innerHTML = trades.length
+    ? trades.slice(0, 14).map((trade) => `
+      <div class="trade-row mono">
+        <span class="${trade.side === "BUY" ? "good" : "bad"}">${escapeHtml(trade.side || "-")}</span>
+        <span>${timeOnly(trade.timestamp)}</span>
+        <span>${escapeHtml(trade.label || shortWallet(trade.proxyWallet))}</span>
+        <span>${fmtProb(trade.price)}</span>
+        <span>${fmtUsd(trade.size)}</span>
+      </div>
+    `).join("")
+    : `<div class="empty">No trades</div>`;
+}
+
+function renderHistory(trades = []) {
+  if (!trades.length) {
+    els.historyBody.innerHTML = `<tr><td colspan="5" class="empty">No market development</td></tr>`;
+    return;
+  }
+
+  els.historyBody.innerHTML = trades.slice(0, 40).map((trade) => `
+    <tr>
+      <td>${timeOnly(trade.timestamp)}</td>
+      <td>${fmtProb(trade.price)}</td>
+      <td>${fmtUsd(trade.size)}</td>
+      <td class="${trade.side === "BUY" ? "good" : "bad"}">${escapeHtml(trade.side || "-")}</td>
+      <td>${escapeHtml(trade.label || shortWallet(trade.proxyWallet))}</td>
+    </tr>
+  `).join("");
+}
+
+function drawChart(chart = [], analysis = null) {
+  const canvas = els.detailChart;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#061019";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!Array.isArray(chart) || chart.length < 2) return;
+
+  const points = chart
+    .map((point) => ({
+      x: Number(point.t ?? point.timestamp ?? 0),
+      y: Number(point.p ?? point.price ?? 0),
+    }))
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.x > 0);
+
+  if (points.length < 2) return;
+
+  const minX = Math.min(...points.map((p) => p.x));
+  const maxX = Math.max(...points.map((p) => p.x));
+  const minY = Math.min(...points.map((p) => p.y));
+  const maxY = Math.max(...points.map((p) => p.y));
+
+  const pad = 16;
+  const px = (x) => pad + ((x - minX) / Math.max(1, maxX - minX)) * (width - pad * 2);
+  const py = (y) => height - pad - ((y - minY) / Math.max(0.0001, maxY - minY)) * (height - pad * 2);
+
+  ctx.strokeStyle = "#14314a";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
+    const y = pad + ((height - pad * 2) / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(width - pad, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#66b6ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const x = px(point.x);
+    const y = py(point.y);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  if (analysis?.localHighTs && Number.isFinite(analysis.localHighPrice)) {
+    dot(ctx, px(analysis.localHighTs), py(analysis.localHighPrice), "#ffd76c");
+  }
+  if (analysis?.localLowTs && Number.isFinite(analysis.localLowPrice)) {
+    dot(ctx, px(analysis.localLowTs), py(analysis.localLowPrice), "#ff7f7f");
+  }
+
+  const last = points[points.length - 1];
+  dot(ctx, px(last.x), py(last.y), "#82f3b7");
+}
+
+function dot(ctx, x, y, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function updateStats() {
+  const rows = state.rows;
+  const whales = rows.filter((row) => row.whale?.whaleFlag).length;
+  const avgScore = rows.length
+    ? rows.reduce((sum, row) => sum + num(row.signal?.score), 0) / rows.length
+    : 0;
+
+  els.whalesKpi.textContent = String(whales);
+  els.scoreKpi.textContent = avgScore.toFixed(1);
+  els.refreshKpi.textContent = new Date().toLocaleTimeString();
+}
+
+function fmtProb(value) {
+  return `${(num(value) * 100).toFixed(1)}%`;
+}
+
+function fmtUsd(value) {
+  return `$${num(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function shortWallet(address = "") {
+  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "unknown";
+}
+
+function timeOnly(ts) {
+  return ts ? new Date(Number(ts)).toLocaleTimeString() : "-";
+}
+
+function scoreClass(score) {
+  if (score >= 65) return "score-a";
+  if (score >= 45) return "score-b";
+  return "score-c";
+}
+
+function num(value) {
+  return Number(value || 0);
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+loadFeed();
+setInterval(loadFeed, 30000);
+</script>
 </body>
 </html>
