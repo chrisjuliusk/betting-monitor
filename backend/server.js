@@ -26,8 +26,15 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/markets", async (_req, res) => {
   try {
+    console.log("API /api/markets called");
+
     await loadMarkets();
-    res.json([...state.markets.values()]);
+
+    const rows = [...state.markets.values()];
+    console.log("markets after load:", rows.length);
+    console.log("first market:", rows[0] || null);
+
+    res.json(rows);
   } catch (error) {
     console.error("GET /api/markets failed:", error);
     res.status(500).json({ ok: false, error: "markets_failed" });
@@ -44,7 +51,9 @@ app.get("/api/timeline/:conditionId", async (req, res) => {
       return {
         ...row,
         walletLabel: walletObj?.nickname || row.wallet,
-        profileUrl: walletObj ? profileHref(walletObj) : (row.wallet ? `https://polymarket.com/profile/${row.wallet}` : "#")
+        profileUrl: walletObj
+          ? profileHref(walletObj)
+          : (row.wallet ? `https://polymarket.com/profile/${row.wallet}` : "#")
       };
     });
 
