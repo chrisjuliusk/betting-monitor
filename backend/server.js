@@ -24,15 +24,30 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.get("/api/markets", async (_req, res) => {
+app.get("/api/markets", async (req, res) => {
   try {
-    console.log("API /api/markets called");
+    const windowMinutes = Math.max(1, Number(req.query.window || 60));
+    const minDrop = Math.max(0, Number(req.query.minDrop || 0));
+    const mode = req.query.mode === "open" ? "open" : "window";
 
-    await loadMarkets();
+    await loadMarkets({ windowMinutes });
 
-    const rows = [...state.markets.values()];
-    console.log("markets after load:", rows.length);
-    console.log("first market:", rows[0] || null);
+    let rows = [...state.markets.values()].map((row) => ({
+      ...row,
+      dropPct: mode === "open" ? row.dropPctOpen : row.dropPctWindow
+    }));
+
+    if (minDrop > 0) {
+      rows = rows.filter((row) => row.dropPct >= minDrop);
+    }
+
+    const sort = req.query.sort || "drop";
+
+    if (sort === "drop") rows.sort((a, b) => b.dropPct - a.dropPct);
+    if (sort === "recent") rows.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (sort === "flow") rows.sort((a, b) => (b.aggressiveFlowUsd || 0) - (a.aggressiveFlowUsd || 0));
+    if (sort === "wallet") rows.sort((a, b) => (b.smartWalletScore || 0) - (a.smartWalletScore || 0));
+    if (sort === "volume") rows.sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
 
     res.json(rows);
   } catch (error) {
@@ -91,7 +106,7 @@ app.listen(port, "0.0.0.0", () => {
 
 (async () => {
   try {
-    await loadMarkets();
+    await loadMarkets({ windowMinutes: 60 });
     startMarketStream();
     console.log("Initial market load complete");
   } catch (error) {
