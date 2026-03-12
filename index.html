@@ -176,6 +176,11 @@
       background:rgba(98,169,255,.1);
       border-color:rgba(98,169,255,.18)
     }
+    .badge.watch{
+      color:#d0d8ea;
+      background:rgba(255,255,255,.05);
+      border-color:rgba(255,255,255,.1)
+    }
     .green{color:var(--green)}
     .red{color:var(--red)}
     .yellow{color:var(--yellow)}
@@ -342,7 +347,7 @@
         <option value="wallet">Sort: Wallet score</option>
       </select>
       <select id="dropModeSelect" class="field">
-        <option value="drop3m">Window 3m</option>
+        <option value="drop3m" selected>Window 3m</option>
         <option value="drop1m">Window 1m</option>
         <option value="drop5m">Window 5m</option>
         <option value="drop15m">Window 15m</option>
@@ -351,14 +356,14 @@
         <option value="dropPctPeak">From peak</option>
       </select>
       <select id="minDropSelect" class="field">
-        <option value="0">Min drop 0%</option>
+        <option value="0" selected>Min drop 0%</option>
         <option value="1">Min drop 1%</option>
         <option value="2">Min drop 2%</option>
-        <option value="3" selected>Min drop 3%</option>
+        <option value="3">Min drop 3%</option>
         <option value="5">Min drop 5%</option>
       </select>
       <select id="volumeSelect" class="field">
-        <option value="0">Any volume</option>
+        <option value="0" selected>Any volume</option>
         <option value="5000">Vol > $5k</option>
         <option value="25000">Vol > $25k</option>
         <option value="100000">Vol > $100k</option>
@@ -428,7 +433,7 @@
           <div class="kpi-grid">
             <div class="kpi"><div class="k">Opening</div><div class="v" id="kpiOpening">—</div></div>
             <div class="kpi"><div class="k">Current</div><div class="v" id="kpiCurrent">—</div></div>
-            <div class="kpi"><div class="k">3m drop</div><div class="v" id="kpiDrop">—</div></div>
+            <div class="kpi"><div class="k">Active drop</div><div class="v" id="kpiDrop">—</div></div>
             <div class="kpi"><div class="k">From peak</div><div class="v" id="kpiPeak">—</div></div>
             <div class="kpi"><div class="k">Volume</div><div class="v" id="kpiFlow">—</div></div>
             <div class="kpi"><div class="k">Wallet score</div><div class="v" id="kpiWallet">—</div></div>
@@ -440,7 +445,7 @@
 </div>
 
 <script>
-const API_BASE = '';
+const API_BASE = 'https://betting-monitor-backend.onrender.com';
 
 const state = {
   search: '',
@@ -448,7 +453,7 @@ const state = {
   side: 'all',
   sort: 'drop',
   dropMode: 'drop3m',
-  minDrop: 3,
+  minDrop: 0,
   minVolume: 0,
   tab: 'all',
   controlsHidden: false,
@@ -505,7 +510,25 @@ const escapeHtml = s =>
   }[m]));
 
 function activeDrop(item) {
-  return asNumber(item[state.dropMode], 0);
+  const value = asNumber(item?.[state.dropMode], 0);
+  if (value > 0) return value;
+
+  if (state.dropMode === 'drop3m') return Math.max(asNumber(item?.drop3m, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'drop1m') return Math.max(asNumber(item?.drop1m, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'drop5m') return Math.max(asNumber(item?.drop5m, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'drop15m') return Math.max(asNumber(item?.drop15m, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'drop60m') return Math.max(asNumber(item?.drop60m, 0), asNumber(item?.dropPctWindow, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'dropPctOpen') return Math.max(asNumber(item?.dropPctOpen, 0), asNumber(item?.dropPct, 0));
+  if (state.dropMode === 'dropPctPeak') return Math.max(asNumber(item?.dropPctPeak, 0), asNumber(item?.dropPct, 0));
+
+  return asNumber(item?.dropPct, 0);
+}
+
+function signalLabel(item) {
+  if (activeDrop(item) >= 5) return 'Fast move';
+  if (asNumber(item.smartWalletScore, 0) >= 70) return 'Smart edge';
+  if (asNumber(item.dropPctPeak, 0) >= 5) return 'Pressure';
+  return item.signal || 'Watching';
 }
 
 function getSelected() {
@@ -526,15 +549,15 @@ function filteredMarkets() {
       (x.category || '').toLowerCase().includes(q) ||
       (x.slug || '').toLowerCase().includes(q) ||
       (x.outcome || '').toLowerCase().includes(q) ||
-      (x.signal || '').toLowerCase().includes(q)
+      (signalLabel(x) || '').toLowerCase().includes(q)
     );
   }
 
   list = list.filter(x => activeDrop(x) >= state.minDrop && asNumber(x.volume24h, 0) >= state.minVolume);
 
-  if (state.tab === 'fast') list = list.filter(x => x.signal === 'Fast move');
-  if (state.tab === 'smart') list = list.filter(x => asNumber(x.smartWalletScore, 0) >= 70 || x.signal === 'Smart edge');
-  if (state.tab === 'pressure') list = list.filter(x => x.signal === 'Pressure');
+  if (state.tab === 'fast') list = list.filter(x => activeDrop(x) >= 5);
+  if (state.tab === 'smart') list = list.filter(x => asNumber(x.smartWalletScore, 0) >= 70 || signalLabel(x) === 'Smart edge');
+  if (state.tab === 'pressure') list = list.filter(x => asNumber(x.dropPctPeak, 0) >= 5 || signalLabel(x) === 'Pressure');
 
   if (state.sort === 'drop') list.sort((a, b) => activeDrop(b) - activeDrop(a));
   if (state.sort === 'recent') list.sort((a, b) => asNumber(b.updatedAt) - asNumber(a.updatedAt));
@@ -545,9 +568,10 @@ function filteredMarkets() {
 }
 
 async function loadMarkets() {
-  const r = await fetch(`${API_BASE}/api/markets`);
-  if (!r.ok) throw new Error('markets failed');
-  state.markets = await r.json();
+  const r = await fetch(`${API_BASE}/api/markets`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`markets failed ${r.status}`);
+  const data = await r.json();
+  state.markets = Array.isArray(data) ? data : [];
   if (!state.selectedId && state.markets[0]) state.selectedId = state.markets[0].id;
   state.lastSync = Date.now();
 }
@@ -572,9 +596,9 @@ function renderControls() {
   document.getElementById('volumeSelect').value = String(state.minVolume);
 
   const list = filteredMarkets();
-  const fast = list.filter(x => x.signal === 'Fast move').length;
+  const fast = list.filter(x => activeDrop(x) >= 5).length;
   const smart = list.filter(x => asNumber(x.smartWalletScore, 0) >= 70).length;
-  const timelineReady = state.markets.filter(x => Array.isArray(x.chart) && x.chart.length > 1).length;
+  const timelineReady = state.markets.filter(x => Array.isArray(x.chart) && x.chart.length > 0).length;
 
   document.getElementById('dropStats').textContent = `Drops: ${list.length} · Fast: ${fast} · Smart: ${smart}`;
   document.getElementById('marketStats').textContent = `Markets: ${state.markets.length} · Timeline ready: ${timelineReady}`;
@@ -594,10 +618,11 @@ function renderRows() {
   }
 
   rowsEl.innerHTML = list.map(item => {
+    const label = signalLabel(item);
     const badgeClass =
-      item.signal === 'Fast move' ? 'fast' :
-      item.signal === 'Pressure' ? 'pressure' :
-      item.signal === 'Smart edge' ? 'smart' : '';
+      label === 'Fast move' ? 'fast' :
+      label === 'Pressure' ? 'pressure' :
+      label === 'Smart edge' ? 'smart' : 'watch';
 
     return `
       <div class="row ${selected && selected.id === item.id ? 'active' : ''}" data-id="${escapeHtml(item.id)}">
@@ -609,10 +634,10 @@ function renderRows() {
         <div class="green">${formatAgo(item.updatedAt)}</div>
         <div>${formatOdds(item.previousPrice)} <span class="red">→ ${formatOdds(item.currentPrice)}</span></div>
         <div class="hide-sm">${formatOdds(item.fairPrice)}</div>
-        <div class="hide-md ${activeDrop(item) >= 3 ? 'red' : activeDrop(item) > 0 ? 'yellow' : 'muted'}">${activeDrop(item).toFixed(2)}%</div>
+        <div class="hide-md ${activeDrop(item) >= 5 ? 'red' : activeDrop(item) > 0 ? 'yellow' : 'muted'}">${activeDrop(item).toFixed(2)}%</div>
         <div class="hide-md">${formatUsd(item.volume24h)}</div>
-        <div class="hide-sm">${item.primaryWalletName || '—'}</div>
-        <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(item.signal || '')}</span></div>
+        <div class="hide-sm">${escapeHtml(item.primaryWalletName || '—')}</div>
+        <div class="hide-sm"><span class="badge ${badgeClass}">${escapeHtml(label)}</span></div>
       </div>
     `;
   }).join('');
@@ -636,7 +661,7 @@ function renderChart() {
 
   const pts = selected.chart.map((t, i) => ({
     price: asNumber(t.price, selected.currentPrice),
-    fair: asNumber(t.price + 0.01, selected.fairPrice),
+    fair: asNumber(selected.fairPrice, asNumber(t.price, selected.currentPrice)),
     volume: asNumber(t.volume, 0),
     idx: i
   }));
@@ -690,7 +715,7 @@ function renderDetail() {
     <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
       <span class="badge">${escapeHtml(selected.category || '')}</span>
       <span class="badge">${escapeHtml(selected.outcome || '')}</span>
-      <span class="badge">${escapeHtml(selected.signal || '')}</span>
+      <span class="badge">${escapeHtml(signalLabel(selected))}</span>
     </div>
     <div class="detail-grid" style="margin-top:10px;">
       <div class="detail-box"><div class="k">Opening price</div><div class="v">${formatOdds(selected.openingPrice)}</div><div class="tiny">${formatProb(selected.openingPrice)}</div></div>
@@ -716,7 +741,7 @@ function renderDetail() {
 
   document.getElementById('kpiOpening').textContent = formatOdds(selected.openingPrice);
   document.getElementById('kpiCurrent').textContent = formatOdds(selected.currentPrice);
-  document.getElementById('kpiDrop').textContent = `${asNumber(selected.drop3m, 0).toFixed(2)}%`;
+  document.getElementById('kpiDrop').textContent = `${activeDrop(selected).toFixed(2)}%`;
   document.getElementById('kpiPeak').textContent = `${asNumber(selected.dropPctPeak, 0).toFixed(2)}%`;
   document.getElementById('kpiFlow').textContent = formatUsd(selected.volume24h);
   document.getElementById('kpiWallet').textContent = selected.smartWalletScore ?? '—';
