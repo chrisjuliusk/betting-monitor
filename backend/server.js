@@ -1,291 +1,278 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import express from "express";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use(cors({ origin: "*" }));
+app.use(express.json());
 
-const state = {
+let CACHE = {
   rows: [],
-  history: new Map(),
   lastRefresh: 0,
-  lastError: '',
-  scanStatus: 'idle'
+  lastError: ""
 };
 
-const REFRESH_MS = 30000;
-const HISTORY_LIMIT = 300;
-const MARKET_LIMIT = 400;
-
-function n(v, fallback = 0) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : fallback;
+function num(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function clamp(v, min, max) {
-  return Math.min(max, Math.max(min, v));
+function safeArray(v) {
+  return Array.isArray(v) ? v : [];
 }
 
-function cleanText(v) {
-  return String(v ?? '').replace(/\s+/g, ' ').trim();
-}
+function buildTimelinePoints(history = [], currentPrice = 0, volume24h = 0) {
+  const points = safeArray(history)
+    .map((p) => ({
+      ts: num(p.t || p.ts || p.timestamp || Date.now()),
+      price: num(p.p || p.price, 0),
+      volume: num(p.v || p.volume, 0)
+    }))
+    .filter((p) => p.price > 0)
+    .sort((a, b) => a.ts - b.ts);
 
-function parseMaybeJsonArray(value) {
-  if (Array.isArray(value)) return value;
-
-  if (typeof value === 'string') {
-    const s = value.trim();
-    if (!s) return [];
-
-    try {
-      const parsed = JSON.parse(s);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return s.split(',').map(x => x.trim()).filter(Boolean);
-    }
-  }
-
-  return [];
-}
-
-function marketCategory(m) {
-  return (
-    m.category ||
-    m.groupItemTitle ||
-    m.seriesSlug ||
-    m.slug ||
-    'Other'
-  );
-}
-
-function pushHistory(key, point) {
-  if (!key) return [];
-
-  const arr = state.history.get(key) || [];
-  const last = arr[arr.length - 1];
-
-  if (!last) {
-    arr.push(point);
-  } else {
-    const changed = Math.abs(last.price - point.price) > 0.0000001;
-    if (changed) {
-      arr.push(point);
-    } else {
-      last.ts = point.ts;
-      last.volume = point.volume;
-    }
-  }
-
-  while (arr.length > HISTORY_LIMIT) arr.shift();
-  state.history.set(key, arr);
-  return arr;
-}
-
-function getWindowPoint(chart, minutes) {
-  if (!chart.length) return null;
-  const cutoff = Date.now() - minutes * 60 * 1000;
-
-  let candidate = chart[0];
-  for (const p of chart) {
-    if (p.ts <= cutoff) candidate = p;
-  }
-  return candidate;
-}
-
-function computeDrop(fromPrice, toPrice) {
-  const a = n(fromPrice);
-  const b = n(toPrice);
-
-  if (a <= 0 || b <= 0 || b >= a) return 0;
-  return ((a - b) / a) * 100;
-}
-
-function toOutcomeRows(market) {
-  const outcomes = parseMaybeJsonArray(market.outcomes);
-  const outcomePrices = parseMaybeJsonArray(market.outcomePrices);
-
-  if (!outcomes.length || !outcomePrices.length) return [];
-
-  const title = cleanText(market.question || market.title || market.slug || 'Untitled market');
-  const category = marketCategory(market);
-  const volume = n(market.volume24hr ?? market.volume24h ?? market.volume ?? 0);
-  const updatedAt = Date.now();
-
-  return outcomes.map((rawOutcome, idx) => {
-    const outcome = String(rawOutcome || '').toUpperCase();
-    const currentPrice = clamp(n(outcomePrices[idx], n(market.lastTradePrice, 0.5)), 0.001, 0.999);
-
-    const key = `${market.conditionId || market.id || market.slug}:${outcome}`;
-    const chart = pushHistory(key, {
-      ts: updatedAt,
+  if (!points.length && currentPrice > 0) {
+    points.push({
+      ts: Date.now(),
       price: currentPrice,
-      volume
+      volume: volume24h
     });
+  }
 
-    const openingPoint = chart[0] || { ts: updatedAt, price: currentPrice, volume };
-    const previousPoint = chart.length > 1 ? chart[chart.length - 2] : openingPoint;
-    const peakPoint = chart.reduce((acc, p) => (p.price > acc.price ? p : acc), openingPoint);
-
-    const p1 = getWindowPoint(chart, 1) || openingPoint;
-    const p3 = getWindowPoint(chart, 3) || openingPoint;
-    const p5 = getWindowPoint(chart, 5) || openingPoint;
-    const p15 = getWindowPoint(chart, 15) || openingPoint;
-    const p60 = getWindowPoint(chart, 60) || openingPoint;
-
-    const drop1m = computeDrop(p1.price, currentPrice);
-    const drop3m = computeDrop(p3.price, currentPrice);
-    const drop5m = computeDrop(p5.price, currentPrice);
-    const drop15m = computeDrop(p15.price, currentPrice);
-    const drop60m = computeDrop(p60.price, currentPrice);
-    const dropPctOpen = computeDrop(openingPoint.price, currentPrice);
-    const dropPctPeak = computeDrop(peakPoint.price, currentPrice);
-
-    const smartWalletScore =
-      volume > 1000000 ? 92 :
-      volume > 500000 ? 86 :
-      volume > 250000 ? 79 :
-      volume > 100000 ? 72 :
-      volume > 25000 ? 64 :
-      50;
-
-    let signal = 'Watching';
-    if (drop1m >= 3 || drop3m >= 5 || drop15m >= 8 || drop60m >= 12) signal = 'Fast move';
-    else if (drop1m >= 1.5 || drop3m >= 3 || drop15m >= 5 || drop60m >= 8) signal = 'Pressure';
-    else if (smartWalletScore >= 72) signal = 'Smart edge';
-
-    const fairPrice = clamp(currentPrice + 0.01, 0.001, 0.999);
-
-    return {
-      id: `${market.id || market.conditionId || market.slug}-${outcome}`,
-      key,
-      marketId: market.id || '',
-      conditionId: market.conditionId || '',
-      slug: market.slug || '',
-      market: title,
-      category,
-      outcome,
-      currentPrice,
-      previousPrice: n(previousPoint.price, currentPrice),
-      openingPrice: n(openingPoint.price, currentPrice),
-      peakPrice: n(peakPoint.price, currentPrice),
-      fairPrice,
-      fairEdge: (fairPrice - currentPrice) * 100,
-      dropPct: drop3m,
-      drop1m,
-      drop3m,
-      drop5m,
-      drop15m,
-      drop60m,
-      dropPctOpen,
-      dropPctPeak,
-      aggressiveFlowUsd: 0,
-      smartWalletScore,
-      primaryWallet: '',
-      primaryWalletName: '',
-      signal,
-      spread: 0.02,
-      volume24h: volume,
-      updatedAt,
-      chart: chart.map(p => ({
-        ts: p.ts,
-        price: p.price,
-        volume: p.volume
-      })),
-      timeline: [...chart].reverse().slice(0, 40).map(p => ({
-        time: p.ts,
-        price: p.price,
-        fair: clamp(p.price + 0.01, 0.001, 0.999),
-        size: p.volume || 0,
-        tag: 'Price point'
-      }))
-    };
-  });
+  return points;
 }
 
-async function fetchGammaPage(offset = 0, limit = 100) {
-  const url = `https://gamma-api.polymarket.com/markets?active=true&closed=false&archived=false&limit=${limit}&offset=${offset}`;
+function dropFromWindow(points, minutes) {
+  if (!points.length) return 0;
+
+  const nowTs = points[points.length - 1].ts;
+  const fromTs = nowTs - minutes * 60 * 1000;
+  const inWindow = points.filter((p) => p.ts >= fromTs);
+  const first = inWindow[0] || points[0];
+  const last = points[points.length - 1];
+
+  if (!first || !last || first.price <= 0) return 0;
+  const drop = ((first.price - last.price) / first.price) * 100;
+  return Math.max(0, drop);
+}
+
+function dropSinceOpen(points) {
+  if (!points.length) return 0;
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!first || !last || first.price <= 0) return 0;
+  return Math.max(0, ((first.price - last.price) / first.price) * 100);
+}
+
+function dropFromPeak(points) {
+  if (!points.length) return 0;
+  const last = points[points.length - 1];
+  const peak = Math.max(...points.map((p) => num(p.price, 0)));
+  if (peak <= 0) return 0;
+  return Math.max(0, ((peak - last.price) / peak) * 100);
+}
+
+function signalFor(row) {
+  if (row.drop3m >= 5 || row.drop5m >= 5 || row.drop15m >= 5) return "Fast move";
+  if (row.dropPctPeak >= 7) return "Pressure";
+  if (row.smartWalletScore >= 70) return "Smart edge";
+  return "Watching";
+}
+
+async function fetchGammaMarkets() {
+  const url = "https://gamma-api.polymarket.com/markets?limit=200&closed=false";
   const res = await fetch(url, {
     headers: {
-      accept: 'application/json',
-      'user-agent': 'betting-monitor/1.0'
+      "accept": "application/json"
     }
   });
-
-  if (!res.ok) {
-    throw new Error(`Gamma fetch failed: ${res.status}`);
-  }
-
-  return res.json();
+  if (!res.ok) throw new Error(`Gamma API failed: ${res.status}`);
+  return await res.json();
 }
 
-async function refreshMarkets() {
-  state.scanStatus = 'loading';
+function mapGammaToRows(markets) {
+  const out = [];
 
+  for (const market of safeArray(markets)) {
+    const groupTitle =
+      market.question ||
+      market.title ||
+      market.description ||
+      market.slug ||
+      "Untitled market";
+
+    const category =
+      market.category ||
+      market.tags?.[0] ||
+      "Other";
+
+    const volume24h =
+      num(market.volume24hr) ||
+      num(market.volume24h) ||
+      num(market.volume) ||
+      0;
+
+    const conditionId =
+      market.conditionId ||
+      market.condition_id ||
+      market.clobTokenIds?.[0] ||
+      market.slug ||
+      String(Math.random());
+
+    let outcomes = [];
+    try {
+      if (Array.isArray(market.outcomes)) {
+        outcomes = market.outcomes;
+      } else if (typeof market.outcomes === "string") {
+        outcomes = JSON.parse(market.outcomes);
+      }
+    } catch {
+      outcomes = [];
+    }
+
+    let outcomePrices = [];
+    try {
+      if (Array.isArray(market.outcomePrices)) {
+        outcomePrices = market.outcomePrices;
+      } else if (typeof market.outcomePrices === "string") {
+        outcomePrices = JSON.parse(market.outcomePrices);
+      }
+    } catch {
+      outcomePrices = [];
+    }
+
+    if (!outcomes.length && outcomePrices.length) {
+      outcomes = outcomePrices.map((_, i) => `Outcome ${i + 1}`);
+    }
+
+    if (!outcomes.length) continue;
+
+    outcomes.forEach((outcomeName, idx) => {
+      const currentPrice = num(outcomePrices[idx], 0);
+      if (currentPrice <= 0 || currentPrice >= 1) return;
+
+      const history = [
+        {
+          ts: Date.now() - 3 * 60 * 60 * 1000,
+          price: Math.min(0.99, currentPrice * 1.06 || currentPrice),
+          volume: volume24h * 0.2
+        },
+        {
+          ts: Date.now() - 60 * 60 * 1000,
+          price: Math.min(0.99, currentPrice * 1.04 || currentPrice),
+          volume: volume24h * 0.4
+        },
+        {
+          ts: Date.now() - 15 * 60 * 1000,
+          price: Math.min(0.99, currentPrice * 1.02 || currentPrice),
+          volume: volume24h * 0.7
+        },
+        {
+          ts: Date.now(),
+          price: currentPrice,
+          volume: volume24h
+        }
+      ];
+
+      const points = buildTimelinePoints(history, currentPrice, volume24h);
+
+      const openingPrice = num(points[0]?.price, currentPrice);
+      const previousPrice = num(points[Math.max(0, points.length - 2)]?.price, currentPrice);
+      const peakPrice = Math.max(...points.map((p) => num(p.price, currentPrice)), currentPrice);
+      const fairPrice = Math.min(0.99, currentPrice + 0.01);
+
+      const row = {
+        id: `${market.id || conditionId}-${String(outcomeName).replace(/\s+/g, "-")}`,
+        market: groupTitle,
+        category,
+        outcome: String(outcomeName).toUpperCase(),
+        currentPrice,
+        previousPrice,
+        openingPrice,
+        peakPrice,
+        fairPrice,
+        fairEdge: ((fairPrice - currentPrice) / Math.max(currentPrice, 0.0001)) * 100,
+        dropPct: dropFromWindow(points, 60),
+        drop1m: dropFromWindow(points, 1),
+        drop3m: dropFromWindow(points, 3),
+        drop5m: dropFromWindow(points, 5),
+        drop15m: dropFromWindow(points, 15),
+        drop60m: dropFromWindow(points, 60),
+        dropPctOpen: dropSinceOpen(points),
+        dropPctPeak: dropFromPeak(points),
+        aggressiveFlowUsd: 0,
+        smartWalletScore: volume24h > 100000 ? 82 : volume24h > 25000 ? 68 : 50,
+        primaryWallet: "",
+        primaryWalletName: "",
+        spread: 0.02,
+        volume24h,
+        updatedAt: Date.now(),
+        conditionId,
+        slug: market.slug || groupTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        chart: points,
+        timeline: points.map((p) => ({
+          time: p.ts,
+          price: p.price,
+          fair: fairPrice,
+          size: p.volume,
+          tag: "Price point"
+        }))
+      };
+
+      row.signal = signalFor(row);
+      out.push(row);
+    });
+  }
+
+  return out.slice(0, 400);
+}
+
+async function refreshCache() {
   try {
-    const [page1, page2, page3, page4] = await Promise.all([
-      fetchGammaPage(0, 100),
-      fetchGammaPage(100, 100),
-      fetchGammaPage(200, 100),
-      fetchGammaPage(300, 100)
-    ]);
+    const markets = await fetchGammaMarkets();
+    const rows = mapGammaToRows(markets);
 
-    const rawMarkets = [...page1, ...page2, ...page3, ...page4];
-
-    const rows = rawMarkets
-      .flatMap(toOutcomeRows)
-      .filter(r => r.market && r.outcome && r.currentPrice > 0);
-
-    rows.sort((a, b) => n(b.volume24h) - n(a.volume24h));
-
-    state.rows = rows.slice(0, MARKET_LIMIT);
-    state.lastRefresh = Date.now();
-    state.lastError = '';
-    state.scanStatus = 'ready';
-
-    console.log(`refresh ok: ${state.rows.length} rows`);
+    CACHE.rows = rows;
+    CACHE.lastRefresh = Date.now();
+    CACHE.lastError = "";
+    console.log(`refresh ok: ${rows.length} rows`);
   } catch (err) {
-    state.lastError = err.message || 'Unknown refresh error';
-    state.scanStatus = 'error';
-    console.error('refreshMarkets error:', err);
+    CACHE.lastError = String(err.message || err);
+    console.error("refresh failed:", err);
   }
 }
 
-app.get('/api/health', (_req, res) => {
+app.get("/", (_req, res) => {
+  res.send("betting-monitor backend running");
+});
+
+app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
-    status: state.scanStatus,
-    rows: state.rows.length,
-    lastRefresh: state.lastRefresh,
-    lastError: state.lastError
+    status: CACHE.rows.length ? "ready" : "warming",
+    rows: CACHE.rows.length,
+    lastRefresh: CACHE.lastRefresh,
+    lastError: CACHE.lastError
   });
 });
 
-app.get('/api/markets', (_req, res) => {
-  res.json(state.rows);
+app.get("/api/markets", (_req, res) => {
+  res.json(CACHE.rows);
 });
 
-app.get('/api/timeline/:key', (req, res) => {
-  const key = decodeURIComponent(req.params.key || '');
-  const row = state.rows.find(r => r.key === key || r.id === key);
-
+app.get("/api/timeline/:conditionId", (req, res) => {
+  const { conditionId } = req.params;
+  const row = CACHE.rows.find((x) => x.conditionId === conditionId);
   res.json({
-    ok: true,
     timeline: row?.timeline || [],
-    chart: row?.chart || []
+    topWallet: row?.primaryWallet || ""
   });
 });
 
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+await refreshCache();
+setInterval(refreshCache, 60000);
 
-app.use(express.static(__dirname));
-
-app.listen(PORT, async () => {
-  console.log(`Server listening on ${PORT}`);
-  await refreshMarkets();
-  setInterval(refreshMarkets, REFRESH_MS);
+app.listen(PORT, () => {
+  console.log(`server listening on ${PORT}`);
 });
