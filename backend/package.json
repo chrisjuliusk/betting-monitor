@@ -1,13 +1,16 @@
 {
-  "name": "betting-monitor-backend",
+  "name": "betting-monitor",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Polymarket drop monitor",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.21.2"
   }
 }
