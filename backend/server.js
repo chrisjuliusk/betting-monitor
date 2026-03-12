@@ -16,9 +16,9 @@ const state = {
   scanStatus: 'idle'
 };
 
-const REFRESH_MS = 45000;
-const HISTORY_LIMIT = 240;
-const MARKET_LIMIT = 200;
+const REFRESH_MS = 30000;
+const HISTORY_LIMIT = 300;
+const MARKET_LIMIT = 400;
 
 function n(v, fallback = 0) {
   const x = Number(v);
@@ -29,46 +29,26 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-function safeArray(v) {
-  return Array.isArray(v) ? v : [];
-}
-
-function pushHistory(key, point) {
-  if (!key) return [];
-  const arr = state.history.get(key) || [];
-  const last = arr[arr.length - 1];
-
-  if (!last || Math.abs(last.price - point.price) > 0.0000001) {
-    arr.push(point);
-  } else {
-    last.ts = point.ts;
-    last.volume = point.volume;
-  }
-
-  while (arr.length > HISTORY_LIMIT) arr.shift();
-  state.history.set(key, arr);
-  return arr;
-}
-
-function getWindowPoint(chart, minutes) {
-  if (!chart.length) return null;
-  const cutoff = Date.now() - minutes * 60 * 1000;
-  let candidate = chart[0];
-  for (const p of chart) {
-    if (p.ts <= cutoff) candidate = p;
-  }
-  return candidate;
-}
-
-function computeDrop(fromPrice, toPrice) {
-  const a = n(fromPrice);
-  const b = n(toPrice);
-  if (a <= 0 || b <= 0 || b >= a) return 0;
-  return ((a - b) / a) * 100;
-}
-
 function cleanText(v) {
-  return String(v || '').replace(/\s+/g, ' ').trim();
+  return String(v ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function parseMaybeJsonArray(value) {
+  if (Array.isArray(value)) return value;
+
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (!s) return [];
+
+    try {
+      const parsed = JSON.parse(s);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return s.split(',').map(x => x.trim()).filter(Boolean);
+    }
+  }
+
+  return [];
 }
 
 function marketCategory(m) {
@@ -81,44 +61,87 @@ function marketCategory(m) {
   );
 }
 
-function getOutcomeRows(market) {
-  const outcomes = safeArray(market.outcomes);
-  const outcomePrices = safeArray(market.outcomePrices);
-  const volume = n(market.volume24hr || market.volume24h || market.volume || 0);
-  const spread = 0.02;
+function pushHistory(key, point) {
+  if (!key) return [];
 
-  const names = outcomes.length ? outcomes : ['YES', 'NO'];
-  const prices = outcomePrices.length ? outcomePrices : [market.lastTradePrice, null];
+  const arr = state.history.get(key) || [];
+  const last = arr[arr.length - 1];
 
-  return names.map((outcomeName, idx) => {
-    const rawPrice = prices[idx];
-    const currentPrice = clamp(n(rawPrice, n(market.lastTradePrice, 0)), 0.001, 0.999);
-    const id = `${market.id || market.conditionId || market.slug}-${outcomeName}`;
-    const title = cleanText(market.question || market.title || market.slug || 'Untitled market');
-    const key = `${market.conditionId || market.id || market.slug}:${outcomeName}`;
+  if (!last) {
+    arr.push(point);
+  } else {
+    const changed = Math.abs(last.price - point.price) > 0.0000001;
+    if (changed) {
+      arr.push(point);
+    } else {
+      last.ts = point.ts;
+      last.volume = point.volume;
+    }
+  }
+
+  while (arr.length > HISTORY_LIMIT) arr.shift();
+  state.history.set(key, arr);
+  return arr;
+}
+
+function getWindowPoint(chart, minutes) {
+  if (!chart.length) return null;
+  const cutoff = Date.now() - minutes * 60 * 1000;
+
+  let candidate = chart[0];
+  for (const p of chart) {
+    if (p.ts <= cutoff) candidate = p;
+  }
+  return candidate;
+}
+
+function computeDrop(fromPrice, toPrice) {
+  const a = n(fromPrice);
+  const b = n(toPrice);
+
+  if (a <= 0 || b <= 0 || b >= a) return 0;
+  return ((a - b) / a) * 100;
+}
+
+function toOutcomeRows(market) {
+  const outcomes = parseMaybeJsonArray(market.outcomes);
+  const outcomePrices = parseMaybeJsonArray(market.outcomePrices);
+
+  if (!outcomes.length || !outcomePrices.length) return [];
+
+  const title = cleanText(market.question || market.title || market.slug || 'Untitled market');
+  const category = marketCategory(market);
+  const volume = n(market.volume24hr ?? market.volume24h ?? market.volume ?? 0);
+  const updatedAt = Date.now();
+
+  return outcomes.map((rawOutcome, idx) => {
+    const outcome = String(rawOutcome || '').toUpperCase();
+    const currentPrice = clamp(n(outcomePrices[idx], n(market.lastTradePrice, 0.5)), 0.001, 0.999);
+
+    const key = `${market.conditionId || market.id || market.slug}:${outcome}`;
     const chart = pushHistory(key, {
-      ts: Date.now(),
+      ts: updatedAt,
       price: currentPrice,
       volume
     });
 
-    const openingPoint = chart[0] || null;
-    const prevPoint = chart.length > 1 ? chart[chart.length - 2] : openingPoint;
-    const windowPoint1m = getWindowPoint(chart, 1) || openingPoint;
-    const windowPoint3m = getWindowPoint(chart, 3) || openingPoint;
-    const windowPoint5m = getWindowPoint(chart, 5) || openingPoint;
-    const windowPoint15m = getWindowPoint(chart, 15) || openingPoint;
-    const windowPoint60m = getWindowPoint(chart, 60) || openingPoint;
+    const openingPoint = chart[0] || { ts: updatedAt, price: currentPrice, volume };
+    const previousPoint = chart.length > 1 ? chart[chart.length - 2] : openingPoint;
+    const peakPoint = chart.reduce((acc, p) => (p.price > acc.price ? p : acc), openingPoint);
 
-    const peakPoint = chart.reduce((acc, p) => (p.price > acc.price ? p : acc), chart[0] || { price: currentPrice, ts: Date.now() });
+    const p1 = getWindowPoint(chart, 1) || openingPoint;
+    const p3 = getWindowPoint(chart, 3) || openingPoint;
+    const p5 = getWindowPoint(chart, 5) || openingPoint;
+    const p15 = getWindowPoint(chart, 15) || openingPoint;
+    const p60 = getWindowPoint(chart, 60) || openingPoint;
 
-    const drop1m = computeDrop(windowPoint1m?.price, currentPrice);
-    const drop3m = computeDrop(windowPoint3m?.price, currentPrice);
-    const drop5m = computeDrop(windowPoint5m?.price, currentPrice);
-    const drop15m = computeDrop(windowPoint15m?.price, currentPrice);
-    const drop60m = computeDrop(windowPoint60m?.price, currentPrice);
-    const dropOpen = computeDrop(openingPoint?.price, currentPrice);
-    const dropPeak = computeDrop(peakPoint?.price, currentPrice);
+    const drop1m = computeDrop(p1.price, currentPrice);
+    const drop3m = computeDrop(p3.price, currentPrice);
+    const drop5m = computeDrop(p5.price, currentPrice);
+    const drop15m = computeDrop(p15.price, currentPrice);
+    const drop60m = computeDrop(p60.price, currentPrice);
+    const dropPctOpen = computeDrop(openingPoint.price, currentPrice);
+    const dropPctPeak = computeDrop(peakPoint.price, currentPrice);
 
     const smartWalletScore =
       volume > 1000000 ? 92 :
@@ -129,45 +152,49 @@ function getOutcomeRows(market) {
       50;
 
     let signal = 'Watching';
-    if (drop3m >= 8 || drop15m >= 12 || drop60m >= 18) signal = 'Fast move';
-    else if (drop3m >= 4 || drop15m >= 6 || drop60m >= 10) signal = 'Pressure';
+    if (drop1m >= 3 || drop3m >= 5 || drop15m >= 8 || drop60m >= 12) signal = 'Fast move';
+    else if (drop1m >= 1.5 || drop3m >= 3 || drop15m >= 5 || drop60m >= 8) signal = 'Pressure';
     else if (smartWalletScore >= 72) signal = 'Smart edge';
 
     const fairPrice = clamp(currentPrice + 0.01, 0.001, 0.999);
 
     return {
-      id,
+      id: `${market.id || market.conditionId || market.slug}-${outcome}`,
       key,
       marketId: market.id || '',
       conditionId: market.conditionId || '',
       slug: market.slug || '',
       market: title,
-      category: marketCategory(market),
-      outcome: String(outcomeName || '').toUpperCase(),
+      category,
+      outcome,
       currentPrice,
-      previousPrice: n(prevPoint?.price, currentPrice),
-      openingPrice: n(openingPoint?.price, currentPrice),
-      peakPrice: n(peakPoint?.price, currentPrice),
+      previousPrice: n(previousPoint.price, currentPrice),
+      openingPrice: n(openingPoint.price, currentPrice),
+      peakPrice: n(peakPoint.price, currentPrice),
       fairPrice,
-      fairEdge: ((fairPrice - currentPrice) * 100),
+      fairEdge: (fairPrice - currentPrice) * 100,
       dropPct: drop3m,
       drop1m,
       drop3m,
       drop5m,
       drop15m,
       drop60m,
-      dropPctOpen: dropOpen,
-      dropPctPeak: dropPeak,
+      dropPctOpen,
+      dropPctPeak,
       aggressiveFlowUsd: 0,
       smartWalletScore,
       primaryWallet: '',
       primaryWalletName: '',
       signal,
-      spread,
+      spread: 0.02,
       volume24h: volume,
-      updatedAt: Date.now(),
-      chart: chart.map(p => ({ ts: p.ts, price: p.price, volume: p.volume })),
-      timeline: chart.slice(-30).reverse().map(p => ({
+      updatedAt,
+      chart: chart.map(p => ({
+        ts: p.ts,
+        price: p.price,
+        volume: p.volume
+      })),
+      timeline: [...chart].reverse().slice(0, 40).map(p => ({
         time: p.ts,
         price: p.price,
         fair: clamp(p.price + 0.01, 0.001, 0.999),
@@ -182,7 +209,7 @@ async function fetchGammaPage(offset = 0, limit = 100) {
   const url = `https://gamma-api.polymarket.com/markets?active=true&closed=false&archived=false&limit=${limit}&offset=${offset}`;
   const res = await fetch(url, {
     headers: {
-      'accept': 'application/json',
+      accept: 'application/json',
       'user-agent': 'betting-monitor/1.0'
     }
   });
@@ -198,21 +225,18 @@ async function refreshMarkets() {
   state.scanStatus = 'loading';
 
   try {
-    const [page1, page2] = await Promise.all([
+    const [page1, page2, page3, page4] = await Promise.all([
       fetchGammaPage(0, 100),
-      fetchGammaPage(100, 100)
+      fetchGammaPage(100, 100),
+      fetchGammaPage(200, 100),
+      fetchGammaPage(300, 100)
     ]);
 
-    const rawMarkets = [...safeArray(page1), ...safeArray(page2)];
+    const rawMarkets = [...page1, ...page2, ...page3, ...page4];
 
-    const activeMarkets = rawMarkets.filter(m => {
-      const q = cleanText(m.question || m.title);
-      const outcomes = safeArray(m.outcomes);
-      const prices = safeArray(m.outcomePrices);
-      return q && outcomes.length && prices.length;
-    });
-
-    const rows = activeMarkets.flatMap(getOutcomeRows);
+    const rows = rawMarkets
+      .flatMap(toOutcomeRows)
+      .filter(r => r.market && r.outcome && r.currentPrice > 0);
 
     rows.sort((a, b) => n(b.volume24h) - n(a.volume24h));
 
@@ -220,6 +244,8 @@ async function refreshMarkets() {
     state.lastRefresh = Date.now();
     state.lastError = '';
     state.scanStatus = 'ready';
+
+    console.log(`refresh ok: ${state.rows.length} rows`);
   } catch (err) {
     state.lastError = err.message || 'Unknown refresh error';
     state.scanStatus = 'error';
@@ -244,6 +270,7 @@ app.get('/api/markets', (_req, res) => {
 app.get('/api/timeline/:key', (req, res) => {
   const key = decodeURIComponent(req.params.key || '');
   const row = state.rows.find(r => r.key === key || r.id === key);
+
   res.json({
     ok: true,
     timeline: row?.timeline || [],
